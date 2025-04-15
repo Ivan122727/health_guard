@@ -85,6 +85,36 @@ class UserDBM(SimpleDBM):
         cascade="all, delete-orphan"
     )
 
+    # Связь с созданными опросами
+    created_surveys: Mapped[List["SurveyDBM"]] = relationship(
+        "SurveyDBM",
+        foreign_keys="[SurveyDBM.created_by]",
+        back_populates="author",
+        cascade="all, delete-orphan"
+    )
+    # Добавить в конец класса UserDBM
+    scheduled_surveys_as_patient: Mapped[list["ScheduledSurveyDBM"]] = relationship(
+        "ScheduledSurveyDBM",
+        foreign_keys="[ScheduledSurveyDBM.patient_id]",
+        back_populates="patient",
+        cascade="all, delete-orphan"
+    )
+
+    scheduled_surveys_as_doctor: Mapped[list["ScheduledSurveyDBM"]] = relationship(
+        "ScheduledSurveyDBM",
+        foreign_keys="[ScheduledSurveyDBM.doctor_id]",
+        back_populates="doctor",
+        cascade="all, delete-orphan"
+    )
+    
+    survey_responses: Mapped[list["SurveyResponseDBM"]] = relationship(
+        "SurveyResponseDBM",
+        foreign_keys="[SurveyResponseDBM.patient_id]",
+        back_populates="patient",
+        cascade="all, delete-orphan"
+    )
+    
+
     # Свойства для удобного доступа к связанным пользователям
     @property
     def patients(self) -> List["UserDBM"]:

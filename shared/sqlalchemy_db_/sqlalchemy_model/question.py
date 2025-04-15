@@ -19,7 +19,7 @@ class QuestionDBM(SimpleDBM):
 
         @classmethod
         def to_set(cls) -> Set[str]:
-            """Возвращает множество допустимых типов вопросов."""
+            """Возвращает множество допустимых значений типов вопросов."""
             return {role.value for role in cls}
 
     # Основные поля
@@ -60,6 +60,18 @@ class QuestionDBM(SimpleDBM):
         "UserDBM",
         foreign_keys=[created_by],
         back_populates="created_questions"
+    )
+
+    surveys: Mapped[List["SurveyQuestionDBM"]] = relationship(
+        "SurveyQuestionDBM",
+        back_populates="question",
+        cascade="all, delete-orphan"
+    )
+
+    responses: Mapped[list["SurveyResponseDBM"]] = relationship(
+        "SurveyResponseDBM",
+        back_populates="question",
+        cascade="all, delete-orphan"
     )
 
     @validates("question_type")
