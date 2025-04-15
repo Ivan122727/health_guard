@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Set
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates, Session
 from sqlalchemy import event
@@ -18,9 +18,9 @@ class QuestionDBM(SimpleDBM):
         SCALE = "scale"
 
         @classmethod
-        def to_set(cls) -> set[str]:
+        def to_set(cls) -> Set[str]:
             """Возвращает множество допустимых типов вопросов."""
-            return {cls.TEXT, cls.CHOICE, cls.SCALE}
+            return {role.value for role in cls}
 
     # Основные поля
     created_by: Mapped[int | None] = mapped_column(
@@ -86,6 +86,7 @@ class QuestionDBM(SimpleDBM):
             )
         return value
 
+    # TODO: Добавить валидацию для типа 'choice'
     @validates("answer_options")
     def _validate_answer_options(self, key: str, value: List[str] | None, *args: Any, **kwargs: Any) -> List[str] | None:
         """

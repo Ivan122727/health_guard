@@ -10,7 +10,7 @@ async def main():
     async with get_cached_sqlalchemy_db().new_async_session() as async_session:
         doctor = UserDBM(
             tg_id=12345,
-            role=UserDBM.Roles.patient
+            role=UserDBM.Roles.doctor
         )
         async_session.add(doctor)
         await async_session.commit()
@@ -24,8 +24,9 @@ async def main():
     async with get_cached_sqlalchemy_db().new_async_session() as async_session:
         question = QuestionDBM( 
             question_text="Как вы себя чувствуете?",
-            question_type=QuestionDBM.QuestionType.TEXT,
-            created_by=doctor.id
+            question_type=QuestionDBM.QuestionType.CHOICE,
+            created_by=doctor.id,
+            answer_options=["Хорошо", "Плохо", "Отлично"]
         )
         
         async_session.add(question)
