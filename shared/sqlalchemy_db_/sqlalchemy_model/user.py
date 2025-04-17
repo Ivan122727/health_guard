@@ -62,17 +62,17 @@ class UserDBM(SimpleDBM):
     )
 
     # Связи для докторов
-    patient_relations: Mapped[List["DoctorPatient"]] = relationship(
-        "DoctorPatient",
-        foreign_keys="[DoctorPatient.doctor_id]",
+    patient_relations: Mapped[List["DoctorPatientDBM"]] = relationship(
+        "DoctorPatientDBM",
+        foreign_keys="[DoctorPatientDBM.doctor_id]",
         back_populates="doctor",
         cascade="all, delete-orphan"
     )
 
     # Связи для пациентов
-    doctor_relations: Mapped[List["DoctorPatient"]] = relationship(
-        "DoctorPatient",
-        foreign_keys="[DoctorPatient.patient_id]",
+    doctor_relations: Mapped[List["DoctorPatientDBM"]] = relationship(
+        "DoctorPatientDBM",
+        foreign_keys="[DoctorPatientDBM.patient_id]",
         back_populates="patient",
         cascade="all, delete-orphan"
     )

@@ -47,10 +47,13 @@ class UserActivityMiddleware(BaseMiddleware):
         data["keyboard"] = KeyboardFactory.get(user_dbm.role)
         data["blank"] = BlankFactory.get(user_dbm.role)
         data["user_dbm"] = user_dbm
+
+        action_type = "message" if isinstance(event, Message) else "callback"
+        self.logger.info(
+            f"User {user_dbm.tg_id} performed {action_type} action: '{event.text if isinstance(event, Message) else event.data}'"
+        )
+        
         return await handler(event, data) 
     
 
-        # action_type = "message" if isinstance(event, Message) else "callback"
-        # self.logger.info(
-        #     f"User {user_id} performed {action_type} action: '{event.text if isinstance(event, Message) else event.data}'"
-        # )
+        

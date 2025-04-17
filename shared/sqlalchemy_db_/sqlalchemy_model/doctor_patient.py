@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from shared.sqlalchemy_db_.sqlalchemy_model.common import SimpleDBM
 from shared.sqlalchemy_db_.sqlalchemy_model.user import UserDBM
 
-class DoctorPatient(SimpleDBM):
+class DoctorPatientDBM(SimpleDBM):
     """Модель для связи многие-ко-многим между доктором и пациентом."""
     
     __tablename__ = "doctor_patient"

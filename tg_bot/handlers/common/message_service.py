@@ -80,3 +80,41 @@ class MessageService:
             await state.set_state(new_state)
         
         return sent_message
+    
+    @staticmethod
+    async def edith_managed_message(
+        bot: Bot,
+        user_id: int,
+        text: str,
+        reply_markup: Optional[InlineKeyboardMarkup] = None,
+        state: Optional[FSMContext] = None,
+        previous_message_key: Optional[str] = None,
+        new_state: Optional[State] = None,
+        message_id_storage_key: Optional[str] = None
+    ) -> Message:
+        state_data = await state.get_data()
+
+        if state and state_data.get(previous_message_key):
+            message_id = state_data.get(previous_message_key)
+
+            await bot.edit_message_text(
+                text=text,
+                chat_id=user_id,
+                message_id=message_id
+            )
+            await bot.edit_message_reply_markup(
+                chat_id=user_id,
+                message_id=message_id,
+                reply_markup=reply_markup
+            )
+        else:
+            await MessageService.send_managed_message(
+                bot=bot,
+                user_id=user_id,
+                text=text,
+                reply_markup=reply_markup,
+                state=state,
+                previous_message_key=previous_message_key,
+                new_state=new_state,
+                message_id_storage_key=message_id_storage_key
+            )

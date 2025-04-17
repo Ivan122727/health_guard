@@ -31,7 +31,7 @@ async def handle_start_message(
         keyboard: Фабрика клавиатур
         blank: Фабрика шаблонов сообщений
     """
-    await MessageService.send_managed_message(
+    await MessageService.edith_managed_message(
         bot=message.bot,
         user_id=message.from_user.id,
         text=blank.get_default_blank(user_dbm.full_name),
@@ -41,12 +41,12 @@ async def handle_start_message(
         message_id_storage_key="start_msg_id",
     )
 
-    # Удаляем сообщение пользователя
-    await MessageService.remove_previous_message(
-        bot=message.bot,
-        user_id=message.from_user.id,
-        message_id=message.message_id
-    )
+    # # Удаляем сообщение пользователя
+    # await MessageService.remove_previous_message(
+    #     bot=message.bot,
+    #     user_id=message.from_user.id,
+    #     message_id=message.message_id
+    # )
 
 
 # Обработчик запроса на изменение ФИО
@@ -65,13 +65,14 @@ async def handle_change_full_name_request(
         keyboard: Фабрика клавиатур
         blank: Фабрика шаблонов сообщений
     """
-    await MessageService.send_managed_message(
+    await MessageService.edith_managed_message(
         bot=callback_query.bot,
         user_id=callback_query.from_user.id,
         text=blank.get_change_full_name_blank(),
         state=state,
+        previous_message_key="start_msg_id",
         new_state=ChangeFullNameStates.waiting_new_full_name,
-        message_id_storage_key="change_full_name_msg_id",
+        message_id_storage_key="start_msg_id",
     )
 
     await MessageService.remove_previous_message(
