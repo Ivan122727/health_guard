@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardMarkup
 class CommonBlank(ABC):
     @staticmethod
     @abstractmethod
-    def get_default_blank() -> str:
+    def get_default_blank(full_name: str) -> str:
         """Абстрактный метод: главное меню (должен быть реализован в каждом классе-наследнике)"""
         pass
     

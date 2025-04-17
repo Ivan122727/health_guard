@@ -1,78 +1,17 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
-import sqlalchemy
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from tg_bot.keyboards import CommonKeyboard, CommonAction
 from tg_bot.blanks import CommonBlank
-from tg_bot.states import ChangeFullNameStates
-from tg_bot.utils import validate_and_normalize_full_name
-
-from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
+from tg_bot.handlers.common import MessageService
+from tg_bot.handlers.common.user_handler import UserHandler
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM
-
-# Роутер для обработки сообщений от пользователя
-router = Router(name="user_router")
+from tg_bot.states import ChangeFullNameStates
 
 
-class UserHandler:
-    """Класс для обработки операций, связанных с пользователем"""
-    
-    @staticmethod
-    async def _cleanup_previous_message(
-        bot, 
-        user_id: int, 
-        message_id: int = None
-    ) -> None:
-        """
-        Удаление предыдущего сообщения бота, если оно существует
-        
-        Args:
-            bot: Экземпляр бота
-            user_id: ID пользователя в Telegram
-            message_id: ID сообщения для удаления
-        """
-        if message_id:
-            try:
-                await bot.delete_message(chat_id=user_id, message_id=message_id)
-            except Exception:
-                # Игнорируем ошибки, если сообщение уже удалено или недоступно
-                pass
-
-    @staticmethod
-    async def _update_user_full_name(
-        session: AsyncSession,
-        user_id: int,
-        new_full_name: str
-    ) -> None:
-        """
-        Обновление ФИО пользователя в базе данных
-        
-        Args:
-            session: Асинхронная сессия SQLAlchemy
-            user_id: ID пользователя в Telegram
-            new_full_name: Новое ФИО пользователя
-        """
-        result = await session.execute(
-            sqlalchemy.select(UserDBM).where(UserDBM.tg_id == user_id)
-        )
-        user = result.scalar_one()  # Получаем одного пользователя
-        user.full_name = new_full_name  # Обновляем ФИО
-        await session.commit()  # Сохраняем изменения
-
-    @staticmethod
-    async def full_name_is_valid(full_name: str) -> bool:
-        try:
-            validate_and_normalize_full_name(full_name)
-            return True
-        except ValueError:
-            return False
-
-    @staticmethod
-    async def _normalize_full_name(full_name: str) -> str:
-        return validate_and_normalize_full_name(full_name)
+router = Router()
 
 
 # Обработчик стартового сообщения
@@ -92,6 +31,16 @@ async def handle_start_message(
         keyboard: Фабрика клавиатур
         blank: Фабрика шаблонов сообщений
     """
+    await MessageService.send_managed_message(
+        bot=message.bot,
+        user_id=message.from_user.id,
+        text=blank.get_default_blank(user_dbm.full_name),
+        reply_markup=keyboard.get_default_keyboard(),
+        state=state,
+        previous_message_key="start_msg_id",
+        message_id_storage_key="start_msg_id",
+    )
+    
     # Получаем данные из состояния
     state_data = await state.get_data()
     
@@ -111,12 +60,12 @@ async def handle_start_message(
     await message.delete()
     await state.update_data(start_msg_id=start_msg.message_id)
 
+
 # Обработчик запроса на изменение ФИО
 @router.callback_query(F.data == CommonAction.CHANGE_FULL_NAME)
 async def handle_change_full_name_request(
     callback_query: CallbackQuery,
     state: FSMContext,
-    keyboard: type[CommonKeyboard],
     blank: type[CommonBlank],
 ) -> None:
     """
@@ -149,7 +98,6 @@ async def handle_new_full_name_input(
     state: FSMContext,
     blank: type[CommonBlank],
     keyboard: type[CommonKeyboard],
-    user_dbm: type[UserDBM]
 ) -> None:
     """
     Обработка нового ФИО, введенного пользователем
@@ -181,20 +129,16 @@ async def handle_new_full_name_input(
     normalized_full_name = await UserHandler._normalize_full_name(message.text)
 
     # Обновляем ФИО в базе данных
-    async with get_cached_sqlalchemy_db().new_async_session() as session:
-        await UserHandler._update_user_full_name(
-            session,
-            message.from_user.id,
-            normalized_full_name
-        )
-    
-    # Возвращаем стандартное сообщение с клавиатурой
-    start_msg = await message.answer(
-        text=blank.get_default_blank(normalized_full_name),
-        reply_markup=keyboard.get_default_keyboard()
+    await UserHandler._update_user_full_name(
+        message.from_user.id,
+        normalized_full_name
     )
-    # Сбрасываем состояние
-    await state.clear()
-    await state.update_data(start_msg_id=start_msg.message_id)
+    # Отправляем стартовое сообщение
+    await UserHandler._send_start_message(
+        message.bot,
+        message.from_user.id,
+        blank.get_default_blank(normalized_full_name),
+        state
+    )   
     # Удаляем сообщение пользователя
     await message.delete()

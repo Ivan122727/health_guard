@@ -46,7 +46,7 @@ class UserActivityMiddleware(BaseMiddleware):
         
         data["keyboard"] = KeyboardFactory.get(user_dbm.role)
         data["blank"] = BlankFactory.get(user_dbm.role)
-
+        data["user_dbm"] = user_dbm
         return await handler(event, data) 
     
 
