@@ -19,6 +19,7 @@ class PatientService:
 
         return doctors.all()
 
+
     @staticmethod
     async def get_patient_doctors(user_id: int) -> list[UserDBM]:
         async with get_cached_sqlalchemy_db().new_async_session() as async_session:
@@ -31,23 +32,59 @@ class PatientService:
             doctors = result.scalars().unique()  
         return doctors.all()
     
+
     @staticmethod
     async def connect_patient_to_doctor(
         user_id: int, doctor_id: int
-    ):
+    ) -> None:
         async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            doctor_dbm = (await async_session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.tg_id == doctor_id)
+                .where(UserDBM.is_active)
+                .where(UserDBM.role == UserDBM.Roles.doctor)
+            )).scalar_one()
+
+            patient_dbm = (await async_session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.tg_id == user_id)
+                .where(UserDBM.is_active)
+                .where(UserDBM.role == UserDBM.Roles.patient)
+            )).scalar_one()            
+
             patient_doctor_relation_dbm = DoctorPatientDBM(
-                patient_id=user_id,
-                doctor_id=doctor_id
+                doctor=doctor_dbm,
+                patient=patient_dbm
             )
-            
             async_session.add(patient_doctor_relation_dbm)
-            async_session.commit()
+            await async_session.commit()
+            await async_session.refresh(patient_doctor_relation_dbm)
+
 
     @staticmethod
-    async def get_doctor_selection_page(raw_data: str) -> int:
+    async def is_patient_has_connected(user_id: int) -> bool:
+        return len(await PatientService.get_patient_doctors(user_id))
+
+
+    @staticmethod
+    async def get_selected_doctor(doctor_id: int) -> UserDBM:
+        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            doctor_dbm = (await async_session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.tg_id == doctor_id)
+                .where(UserDBM.is_active)
+                .where(UserDBM.role == UserDBM.Roles.doctor)
+            )).scalar_one()
+        return doctor_dbm
+
+
+    @staticmethod
+    async def get_number_from_callback_data(raw_data: str, num_position: int = 2) -> int:
         try:
-            page = int(raw_data.split(":")[1])
+            page = int(raw_data.split(":")[num_position - 1])
         except (IndexError, ValueError):
             page = 0
         

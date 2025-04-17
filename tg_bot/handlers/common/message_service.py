@@ -28,6 +28,33 @@ class MessageService:
             except Exception:
                 # Сообщение могло быть уже удалено или недоступно
                 pass
+    
+    @staticmethod
+    async def edith_previous_message(
+        bot: Bot,
+        text: str,
+        user_id: int,
+        message_id: Optional[int] = None,
+        reply_markup: Optional[InlineKeyboardMarkup] = None,
+        state: Optional[FSMContext] = None,
+        new_state: Optional[State] = None
+    ):
+        if message_id:
+            try:
+                await bot.edit_message_text(
+                    text=text,
+                    chat_id=user_id,
+                    message_id=message_id,
+                )
+                await bot.edit_message_reply_markup(
+                    chat_id=user_id,
+                    message_id=message_id,
+                    reply_markup=reply_markup
+                )
+            except Exception:
+                pass
+        if state:
+            await state.set_state(new_state)
 
     @staticmethod
     async def send_managed_message(
@@ -90,22 +117,26 @@ class MessageService:
         state: Optional[FSMContext] = None,
         previous_message_key: Optional[str] = None,
         new_state: Optional[State] = None,
-        message_id_storage_key: Optional[str] = None
+        message_id_storage_key: Optional[str] = None,
+        message: Optional[Message] = None
     ) -> Message:
         state_data = await state.get_data()
 
+        if message and state_data.get(previous_message_key) is None:
+            await state.update_data({previous_message_key: message.message_id})
+            state_data = await state.get_data()
+
         if state and state_data.get(previous_message_key):
             message_id = state_data.get(previous_message_key)
-
-            await bot.edit_message_text(
+            
+            await MessageService.edith_previous_message(
+                bot=bot,
                 text=text,
-                chat_id=user_id,
-                message_id=message_id
-            )
-            await bot.edit_message_reply_markup(
-                chat_id=user_id,
+                user_id=user_id,
                 message_id=message_id,
-                reply_markup=reply_markup
+                reply_markup=reply_markup,
+                state=state,
+                new_state=new_state
             )
         else:
             await MessageService.send_managed_message(

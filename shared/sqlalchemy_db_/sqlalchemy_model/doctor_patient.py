@@ -11,14 +11,14 @@ class DoctorPatientDBM(SimpleDBM):
 
     doctor_id: Mapped[int] = mapped_column(
         sqlalchemy.BIGINT,
-        sqlalchemy.ForeignKey("user.id", ondelete="CASCADE"),
+        sqlalchemy.ForeignKey("user.tg_id", ondelete="CASCADE"),
         nullable=False,
         comment="ID доктора"
     )
     
     patient_id: Mapped[int] = mapped_column(
         sqlalchemy.BIGINT,
-        sqlalchemy.ForeignKey("user.id", ondelete="CASCADE"),
+        sqlalchemy.ForeignKey("user.tg_id", ondelete="CASCADE"),
         nullable=False,
         comment="ID пациента"
     )
@@ -36,7 +36,6 @@ class DoctorPatientDBM(SimpleDBM):
         back_populates="doctor_relations"
     )
 
-    # Уникальный индекс для пары доктор-пациент
     __table_args__ = (
         sqlalchemy.UniqueConstraint('doctor_id', 'patient_id', name='uq_doctor_patient'),
     )

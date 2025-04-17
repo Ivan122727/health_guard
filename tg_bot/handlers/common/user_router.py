@@ -41,12 +41,12 @@ async def handle_start_message(
         message_id_storage_key="start_msg_id",
     )
 
-    # # Удаляем сообщение пользователя
-    # await MessageService.remove_previous_message(
-    #     bot=message.bot,
-    #     user_id=message.from_user.id,
-    #     message_id=message.message_id
-    # )
+    # Удаляем сообщение пользователя
+    await MessageService.remove_previous_message(
+        bot=message.bot,
+        user_id=message.from_user.id,
+        message_id=message.message_id
+    )
 
 
 # Обработчик запроса на изменение ФИО
@@ -65,6 +65,8 @@ async def handle_change_full_name_request(
         keyboard: Фабрика клавиатур
         blank: Фабрика шаблонов сообщений
     """
+    await callback_query.answer()
+    
     await MessageService.edith_managed_message(
         bot=callback_query.bot,
         user_id=callback_query.from_user.id,
@@ -73,13 +75,8 @@ async def handle_change_full_name_request(
         previous_message_key="start_msg_id",
         new_state=ChangeFullNameStates.waiting_new_full_name,
         message_id_storage_key="start_msg_id",
+        message=callback_query.message,
     )
-
-    # await MessageService.remove_previous_message(
-    #     bot=callback_query.bot,
-    #     user_id=callback_query.from_user.id,
-    #     message_id=callback_query.message.message_id
-    # )
 
 
 # Обработчик ввода нового ФИО
@@ -103,30 +100,27 @@ async def handle_new_full_name_input(
         normalized_full_name = await UserService.normalize_full_name(message.text)
         
         text = blank.get_default_blank(normalized_full_name)
-        message_id_storage_key = "start_msg_id"
         reply_markup = keyboard.get_default_keyboard()
         new_state = None
-
         # Обновляем ФИО в базе данных
         await UserService.update_user_full_name(
             message.from_user.id,
             normalized_full_name
         )
     else:
-        text = blank.get_change_full_name_blank()
-        message_id_storage_key = "change_full_name_msg_id"
+        text = blank.get_invalid_name_format_blank()
         reply_markup = None
         new_state = ChangeFullNameStates.waiting_new_full_name
 
-    await MessageService.send_managed_message(
+    await MessageService.edith_managed_message(
         bot=message.bot,
         user_id=message.from_user.id,
         text=text,
         reply_markup=reply_markup,
         state=state,
-        previous_message_key="change_full_name_msg_id",
+        previous_message_key="start_msg_id",
         new_state=new_state,
-        message_id_storage_key=message_id_storage_key
+        message_id_storage_key="start_msg_id"
     )
 
     # Удаляем сообщение пользователя

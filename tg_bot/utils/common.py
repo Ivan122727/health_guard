@@ -16,7 +16,7 @@ def validate_and_normalize_full_name(raw_name: str) -> str:
         ValueError: Если имя не прошло валидацию
         
     Правила валидации:
-        - Минимум 3 слова (имя, фамилия и отчество)
+        - Минимум 2 слова (имя, фамилия и отчество)
         - Максимум 100 символов в сумме
         - Каждая часть имени от 2 до 25 символов
         - Только буквы, пробелы и дефисы
@@ -35,8 +35,8 @@ def validate_and_normalize_full_name(raw_name: str) -> str:
     name_parts = sanitized.split()
     
     # Валидация количества слов
-    if len(name_parts) < 3:
-        raise ValueError("Введите имя, фамилию и отчество (минимум 3 слова)")
+    if len(name_parts) < 2:
+        raise ValueError("Введите имя, фамилию и отчество (минимум 2 слова)")
     
     # Валидация каждой части имени
     for part in name_parts:

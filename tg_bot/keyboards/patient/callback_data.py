@@ -5,3 +5,5 @@ class PatientAction(str, Enum):
     CHANGE_FULL_NAME = "change_full_name"
     CONNECT_TO_DOCTOR = "connect_to_doctor"
     SELECT_DOCTOR = "select_doctor"
+    CONFIRM_SELECTED_DOCTOR = "confirm_selected_doctor"
+    CANCEL_CONNECT_TO_DOCTOR = "cancel_connect_to_doctor"
