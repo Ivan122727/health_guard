@@ -10,7 +10,7 @@ class UserService(MessageService):
     """Класс для обработки операций, связанных с пользователем"""
     
     @staticmethod
-    async def _update_user_full_name(
+    async def update_user_full_name(
         user_id: int,
         new_full_name: str
     ) -> None:
@@ -38,5 +38,5 @@ class UserService(MessageService):
             return False
 
     @staticmethod
-    async def _normalize_full_name(full_name: str) -> str:
+    async def normalize_full_name(full_name: str) -> str:
         return validate_and_normalize_full_name(full_name)

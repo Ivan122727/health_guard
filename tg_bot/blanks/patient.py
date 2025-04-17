@@ -11,3 +11,10 @@ class PatientBlank(CommonBlank):
             f"{full_name}"
         )
         return text
+
+    @staticmethod
+    def get_doctor_selection_blank() -> str:
+        text = (
+            f"Выберите доктора к которому вы хотите закрепиться!"
+        )
+        return text

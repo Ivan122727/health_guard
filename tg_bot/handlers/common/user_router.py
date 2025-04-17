@@ -42,7 +42,11 @@ async def handle_start_message(
     )
 
     # Удаляем сообщение пользователя
-    await message.delete()
+    await MessageService.remove_previous_message(
+        bot=message.bot,
+        user_id=message.from_user.id,
+        message_id=message.message_id
+    )
 
 
 # Обработчик запроса на изменение ФИО
@@ -70,7 +74,11 @@ async def handle_change_full_name_request(
         message_id_storage_key="change_full_name_msg_id",
     )
 
-    await callback_query.message.delete()
+    await MessageService.remove_previous_message(
+        bot=callback_query.bot,
+        user_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id
+    )
 
 
 # Обработчик ввода нового ФИО
@@ -91,7 +99,7 @@ async def handle_new_full_name_input(
         keyboard: Фабрика клавиатур
     """
     if await UserService.full_name_is_valid(message.text):
-        normalized_full_name = await UserService._normalize_full_name(message.text)
+        normalized_full_name = await UserService.normalize_full_name(message.text)
         
         text = blank.get_default_blank(normalized_full_name)
         message_id_storage_key = "start_msg_id"
@@ -99,7 +107,7 @@ async def handle_new_full_name_input(
         new_state = None
 
         # Обновляем ФИО в базе данных
-        await UserService._update_user_full_name(
+        await UserService.update_user_full_name(
             message.from_user.id,
             normalized_full_name
         )
@@ -120,4 +128,9 @@ async def handle_new_full_name_input(
         message_id_storage_key=message_id_storage_key
     )
 
-    await message.delete()
+    # Удаляем сообщение пользователя
+    await MessageService.remove_previous_message(
+        bot=message.bot,
+        user_id=message.from_user.id,
+        message_id=message.message_id
+    )
