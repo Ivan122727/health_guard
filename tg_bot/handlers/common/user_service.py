@@ -2,11 +2,11 @@ import sqlalchemy
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM
-from tg_bot.handlers.common import MessageService
+from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.utils import validate_and_normalize_full_name
 
 
-class UserHandler(MessageService):
+class UserService(MessageService):
     """Класс для обработки операций, связанных с пользователем"""
     
     @staticmethod

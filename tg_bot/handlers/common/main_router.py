@@ -1,9 +1,9 @@
 from aiogram import Router
 
-from tg_bot.handlers.common import common
+from tg_bot.handlers.common import user_router
 
 common_router =  Router()
 
 common_router.include_routers(
-    common.router,
+    user_router.router,
 )
