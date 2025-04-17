@@ -1,0 +1,1 @@
+from tg_bot.utils.common import validate_and_normalize_full_name

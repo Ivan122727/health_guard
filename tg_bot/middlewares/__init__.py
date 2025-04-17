@@ -1,0 +1,1 @@
+from tg_bot.middlewares.user_activity import UserActivityMiddleware

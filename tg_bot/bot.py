@@ -16,8 +16,8 @@ sys.path.append(str(parent_dir))
 os.chdir(parent_dir)
 
 from shared.config import BotSettings
-from tg_bot.middlewares.user_activity import UserActivityMiddleware
-from tg_bot.handlers.base import router
+from tg_bot.middlewares import UserActivityMiddleware
+from tg_bot.handlers.main_router import main_router
 
 class LoggerConfig:
     """Класс для настройки логгера (Singleton)"""
@@ -65,7 +65,7 @@ class BotInitializer:
         dp.callback_query.middleware(activity_middleware)
 
     def _setup_routers(self, dp: Dispatcher):
-        dp.include_routers(router)
+        dp.include_routers(main_router)
 
     async def start(self):
         """Запуск бота"""
