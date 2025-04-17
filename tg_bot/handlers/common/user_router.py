@@ -75,11 +75,11 @@ async def handle_change_full_name_request(
         message_id_storage_key="start_msg_id",
     )
 
-    await MessageService.remove_previous_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
-        message_id=callback_query.message.message_id
-    )
+    # await MessageService.remove_previous_message(
+    #     bot=callback_query.bot,
+    #     user_id=callback_query.from_user.id,
+    #     message_id=callback_query.message.message_id
+    # )
 
 
 # Обработчик ввода нового ФИО
