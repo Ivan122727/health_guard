@@ -94,3 +94,54 @@ class DoctorKeyboard(CommonKeyboard):
         
         keyboard.adjust(1)
         return keyboard.as_markup()
+    
+
+    @staticmethod
+    def get_survey_management_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура управления созданием опроса"""
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="💾 Сохранить опрос",
+            callback_data=DoctorAction.SAVE_SURVEY
+        )
+        keyboard.button(
+            text="✏️ Редактировать опрос",
+            callback_data=DoctorAction.EDITH_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить создание",
+            callback_data=DoctorAction.CANCEL_CREATE_SURVEY
+        )
+        # keyboard.button(
+        #     text="⬅️ В главное меню",
+        #     callback_data=DoctorAction.BACK_TO_MENU
+        # )
+        
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_edit_survey_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура редактирования опроса"""
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="➕ Добавить вопрос",
+            callback_data=DoctorAction.ADD_QUESTION
+        )
+        keyboard.button(
+            text="✏️ Изменить вопрос",
+            callback_data=DoctorAction.EDIT_QUESTION
+        )
+        keyboard.button(
+            text="🗑 Удалить вопрос",
+            callback_data=DoctorAction.DELETE_QUESTION
+        )
+        keyboard.button(
+            text="✅ Завершить редактирование",
+            callback_data=DoctorAction.FINISH_EDITING
+        )
+        
+        keyboard.adjust(2, 2)
+        return keyboard.as_markup()
