@@ -1,16 +1,11 @@
-from dataclasses import dataclass
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from typing import List, Optional
+from typing import List
 
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM
 from tg_bot.keyboards.common.common import CommonKeyboard
 from tg_bot.keyboards.patient.callback_data import PatientAction
 
-@dataclass
-class DoctorPagination:
-    page: int = 0
-    per_page: int = 10
 
 class PatientKeyboard(CommonKeyboard):
     """Фабрика инлайн-клавиатур для пациента (Factory pattern)"""

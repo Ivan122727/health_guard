@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
@@ -149,3 +149,20 @@ class MessageService:
                 new_state=new_state,
                 message_id_storage_key=message_id_storage_key
             )
+    
+    @staticmethod
+    async def set_state_data(
+        state: FSMContext, 
+        key: str, 
+        value: Any
+    ) -> None:
+        await state.update_data({key: value})
+    
+    @staticmethod
+    async def get_state_data(
+        state: FSMContext, 
+        key: str, 
+    ) -> Any:
+        state_data = await state.get_data()
+
+        return state_data.get(key)
