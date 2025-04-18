@@ -19,8 +19,8 @@ async def main():
         for i in range(20):
             doctor_dbm = UserDBM(
                 tg_id=12311212+i,
-                full_name=f"Докторов Доктор {i}",
-                role=UserDBM.Roles.doctor
+                full_name=f"Пациентов Пациент {i}",
+                role=UserDBM.Roles.patient
             )
             async_session.add(doctor_dbm)
             await async_session.commit()
