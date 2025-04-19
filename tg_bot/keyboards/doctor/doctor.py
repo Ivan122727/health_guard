@@ -101,10 +101,10 @@ class DoctorKeyboard(CommonKeyboard):
         """Клавиатура управления созданием опроса"""
         keyboard = InlineKeyboardBuilder()
         
-        keyboard.button(
-            text="💾 Сохранить опрос",
-            callback_data=DoctorAction.SAVE_SURVEY
-        )
+        # keyboard.button(
+        #     text="💾 Сохранить опрос",
+        #     callback_data=DoctorAction.SAVE_SURVEY
+        # )
         keyboard.button(
             text="✏️ Редактировать опрос",
             callback_data=DoctorAction.EDITH_SURVEY

@@ -162,7 +162,7 @@ class MessageService:
     async def get_state_data(
         state: FSMContext, 
         key: str, 
-    ) -> Any:
+    ) -> Any | None:
         state_data = await state.get_data()
 
         return state_data.get(key)

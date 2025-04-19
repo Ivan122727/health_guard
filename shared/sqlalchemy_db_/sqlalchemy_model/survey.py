@@ -26,7 +26,7 @@ class SurveyDBM(SimpleDBM):
     
     created_by: Mapped[int | None] = mapped_column(
         sqlalchemy.BIGINT,
-        sqlalchemy.ForeignKey("user.id", ondelete="SET NULL"),
+        sqlalchemy.ForeignKey("user.tg_id", ondelete="SET NULL"),
         nullable=True,
         comment="ID создателя опроса"
     )

@@ -32,14 +32,14 @@ class ScheduledSurveyDBM(SimpleDBM):
     
     patient_id: Mapped[int] = mapped_column(
         sqlalchemy.BIGINT,
-        sqlalchemy.ForeignKey("user.id", ondelete="CASCADE"),
+        sqlalchemy.ForeignKey("user.tg_id", ondelete="CASCADE"),
         nullable=False,
         comment="ID пациента"
     )
     
     doctor_id: Mapped[Optional[int]] = mapped_column(
         sqlalchemy.BIGINT,
-        sqlalchemy.ForeignKey("user.id", ondelete="SET NULL"),
+        sqlalchemy.ForeignKey("user.tg_id", ondelete="SET NULL"),
         nullable=True,
         comment="ID доктора"
     )

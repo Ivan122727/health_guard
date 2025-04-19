@@ -120,9 +120,9 @@ async def handle_add_new_question_text(
     user_dbm: type[UserDBM]
 ):
     # Добавляем текст в опрос
-    await DoctorService.add_or_edith_question_text_in_survey(
+    await DoctorService.add_or_edit_question_text_in_survey(
         state=state,
-        question_text=message.text,
+        text=message.text,
     )
 
     await MessageService.edith_managed_message(
@@ -152,15 +152,15 @@ async def handle_add_new_question_options(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    answer_options = await DoctorService.parse_question_answer_options(
-        raw_question_answer_options=message.text
+    answer_options = await DoctorService.parse_answer_options(
+        raw_options=message.text
     )
-    await DoctorService.add_add_answer_options_in_survey(
+    await DoctorService.add_options_to_current_question(
         state=state,
         answer_options=answer_options
     )
     
-    count_questions = await DoctorService.get_count_questions(state=state)
+    count_questions = await DoctorService.get_count_questions_in_survey(state=state)
 
     await MessageService.edith_managed_message(
         bot=message.bot,
@@ -180,7 +180,32 @@ async def handle_add_new_question_options(
         message_id=message.message_id
     )
 
-@router.callback_query(F.data.startswith(DoctorAction.EDITH_SURVEY.value))
+@router.callback_query(F.data.startswith(DoctorAction.SAVE_SURVEY.value))
+async def handle_save_survey(
+    callback_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await DoctorService.save_survey_in_db(
+        state=state,
+        user_id=callback_query.from_user.id,
+    )
+
+    await MessageService.edith_managed_message(
+        bot=callback_query.bot,
+        user_id=callback_query.from_user.id,
+        text=blank.get_default_blank(user_dbm.full_name),
+        reply_markup=keyboard.get_default_keyboard(),
+        state=state,
+        previous_message_key="start_message_id",
+        message_id_storage_key="start_message_id",
+        message=callback_query.message,
+    )    
+
+
+@router.callback_query(F.data.startswith(DoctorAction.EDIT_QUESTION.value))
 async def handle_edith_survey(
     callback_query: CallbackQuery,
     state: FSMContext,
@@ -188,18 +213,4 @@ async def handle_edith_survey(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    questions = await DoctorService.get_survey(state=state)
-    for question in questions:
-        print(f"{question.id=}, {question.text=}, {question.options=}, {question.is_active=}")
-    
-    await MessageService.edith_managed_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
-        text=blank.get_default_blank(user_dbm.full_name),
-        reply_markup=keyboard.get_edit_survey_keyboard(),
-        state=state,
-        previous_message_key="start_message_id",
-        message_id_storage_key="start_message_id",
-        message=callback_query.message,
-    )    
-    
+    DoctorService

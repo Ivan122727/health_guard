@@ -14,6 +14,13 @@ class Survey:
         self.questions: Dict[str, Question] = {}  # id: Question
         self.current_question_id: Optional[str] = None
         self.count_active_questions = 0
+        self.title = "Без названия"
+
+    def edith_survey_title(
+            self,
+            title: str
+    ):
+        self.title = title
 
     def add_question(
             self, 
