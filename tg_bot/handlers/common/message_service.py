@@ -172,3 +172,18 @@ class MessageService:
         state_data = await state.get_data()
 
         return state_data.get(key)
+    
+    @staticmethod
+    async def get_value_from_callback_data(
+        callback_data: str, 
+        position_index: int = 2, 
+        default_value: int = 0,
+        sep: str = ":",
+        type: type = int
+    ) -> int:
+        try:
+            value = type(callback_data.split(sep=sep)[position_index - 1])
+        except (IndexError, ValueError, AttributeError):
+            value = default_value
+        
+        return value

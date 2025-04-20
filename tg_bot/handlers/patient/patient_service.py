@@ -80,19 +80,3 @@ class PatientService:
                 .where(UserDBM.role == UserDBM.Roles.doctor)
             )).scalar_one()
         return doctor_dbm
-
-
-    @staticmethod
-    async def get_value_from_callback_data(
-        callback_data: str, 
-        position_index: int = 2, 
-        default_value: int = 0,
-        sep: str = ":",
-        type: type = int
-    ) -> Any:
-        try:
-            value = type(callback_data.split(sep=sep)[position_index - 1])
-        except (IndexError, ValueError):
-            value = default_value
-        
-        return value

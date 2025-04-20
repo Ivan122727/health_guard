@@ -10,8 +10,7 @@ from openpyxl.utils import get_column_letter
 
 from shared.sqlalchemy_db_.sqlalchemy_model.user import UserDBM
 from tg_bot.handlers.common.message_service import MessageService
-from tg_bot.handlers.doctor.doctor_service import DoctorService
-from tg_bot.handlers.doctor.survey_class import Survey
+from tg_bot.handlers.doctor.create_survey_service import CreateSurveyService
 from tg_bot.keyboards import DoctorAction, DoctorKeyboard
 from tg_bot.blanks import DoctorBlank
 from tg_bot.states.survey import CreateSurveyStates
@@ -28,7 +27,7 @@ async def handle_create_title_survey(
 ):
     await callback_query.answer()
     
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
     
     await MessageService.edith_managed_message(
         bot=callback_query.bot,
@@ -53,7 +52,7 @@ async def proccess_edit_survey_title(
     if change_title:
         title = message.text
     else:
-        title = await DoctorService.get_confirmed_survey_title(state)
+        title = await CreateSurveyService.get_confirmed_survey_title(state)
 
     await MessageService.edith_managed_message(
         bot=message.bot,
@@ -66,7 +65,7 @@ async def proccess_edit_survey_title(
         new_state=CreateSurveyStates.waiting_new_title_survey
     )
 
-    await DoctorService.save_not_confirmed_title(
+    await CreateSurveyService.save_not_confirmed_title(
         state=state,
         title=title,
     )
@@ -120,7 +119,7 @@ async def proccess_handle_choose_type_question(
     user_dbm: type[UserDBM],
     from_cq: bool = True
 ):
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
 
     message_from_cq = message if from_cq else None
 
@@ -151,7 +150,7 @@ async def handle_confirm_title_survey(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    await DoctorService.confirm_survey_title(
+    await CreateSurveyService.confirm_survey_title(
         state=state
     )
 
@@ -328,7 +327,7 @@ async def handle_confirm_new_question_type(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
 
     await MessageService.edith_managed_message(
         bot=callback_query.bot,
@@ -350,7 +349,7 @@ async def handle_confirm_template_question_type(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
     
     await MessageService.edith_managed_message(
         bot=callback_query.bot,
@@ -374,12 +373,12 @@ async def handle_add_new_question_text(
     user_dbm: type[UserDBM]
 ):
     # Добавляем текст в опрос
-    await DoctorService.add_or_edit_question_text_in_survey(
+    await CreateSurveyService.add_or_edit_question_text_in_survey(
         state=state,
         text=message.text,
     )
 
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
 
     await MessageService.edith_managed_message(
         bot=message.bot,
@@ -408,20 +407,20 @@ async def handle_add_new_question_options(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    count_questions = await DoctorService.get_count_questions_in_survey(state=state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state=state)
     
-    current_question = await DoctorService.get_current_question(state)
+    current_question = await CreateSurveyService.get_current_question(state)
 
-    if await DoctorService.is_valid_answer_options(message.text):
-        answer_options = await DoctorService.parse_answer_options(
+    if await CreateSurveyService.is_valid_answer_options(message.text):
+        answer_options = await CreateSurveyService.parse_answer_options(
             raw_options=message.text
         )
-        await DoctorService.add_options_to_current_question(
+        await CreateSurveyService.add_options_to_current_question(
             state=state,
             answer_options=answer_options
         )
         
-        count_questions = await DoctorService.get_count_questions_in_survey(state=state)
+        count_questions = await CreateSurveyService.get_count_questions_in_survey(state=state)
 
         text=blank.get_create_from_scratch_blank(step=blank.STATE_QUESTION_TEXT, count_questions=count_questions)
         new_state = CreateSurveyStates.waiting_new_question_text
@@ -455,20 +454,20 @@ async def handle_add_template_question(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    template_question_id = await DoctorService.get_value_from_callback_data(
+    template_question_id = await MessageService.get_value_from_callback_data(
         message.text,
         position_index=1,
         default_value=-1,
         type=int,
     )
     
-    is_success = await DoctorService.add_or_edit_template_question_to_survey(
+    is_success = await CreateSurveyService.add_or_edit_template_question_to_survey(
         state=state,
         user_id=message.from_user.id,
         template_question_id=template_question_id
     )
     
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
 
     if is_success:
         await MessageService.edith_managed_message(
@@ -508,7 +507,7 @@ async def handle_save_survey(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    survey_was_added = await DoctorService.save_survey_in_db(
+    survey_was_added = await CreateSurveyService.save_survey_in_db(
         state=state,
         user_id=callback_query.from_user.id,
     )
@@ -550,7 +549,7 @@ async def handle_cancel_create_survey(
         new_state=None
     )    
 
-    await DoctorService.clear_survey_data(
+    await CreateSurveyService.clear_survey_data(
         state=state,
         user_id=callback_query.from_user.id,
     ) 
@@ -572,14 +571,14 @@ async def proccess_handle_edit_survey(
         bot=message.bot,
         user_id=user_dbm.tg_id,
         text=blank.get_question_info(
-            current_question=await DoctorService.get_current_question(state),
-            question_number=await DoctorService.get_current_question_number(state),
-            total_questions=await DoctorService.get_count_questions_in_survey(state),
+            current_question=await CreateSurveyService.get_current_question(state),
+            question_number=await CreateSurveyService.get_current_question_number(state),
+            total_questions=await CreateSurveyService.get_count_questions_in_survey(state),
         ),
         reply_markup=keyboard.get_edit_survey_keyboard(
-            current_question=await DoctorService.get_current_question(state),
-            previout_question=await DoctorService.get_previous_question(state),
-            next_question=await DoctorService.get_next_question(state)
+            current_question=await CreateSurveyService.get_current_question(state),
+            previout_question=await CreateSurveyService.get_previous_question(state),
+            next_question=await CreateSurveyService.get_next_question(state)
         ),
         state=state,
         previous_message_key="start_message_id",
@@ -636,14 +635,14 @@ async def handle_set_current_question(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    question_id = await DoctorService.get_value_from_callback_data(
+    question_id = await MessageService.get_value_from_callback_data(
         callback_data=callback_query.data,
         default_value=None,
         type=str,
     )
     
-    if await DoctorService.get_question_by_id(state, question_id):
-        await DoctorService.set_current_question(
+    if await CreateSurveyService.get_question_by_id(state, question_id):
+        await CreateSurveyService.set_current_question(
             state=state,
             question_id=question_id
         )
@@ -664,7 +663,7 @@ async def handle_remove_current_question(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    await DoctorService.remove_current_question(state)
+    await CreateSurveyService.remove_current_question(state)
     
     await proccess_handle_edit_survey(
         message=callback_query.message,
@@ -682,12 +681,12 @@ async def process_handle_create_question(
         user_dbm: type[UserDBM],
         save_edit_question: bool = False,
 ):
-    current_question = await DoctorService.get_current_question(state)
+    current_question = await CreateSurveyService.get_current_question(state)
 
-    count_questions = await DoctorService.get_count_questions_in_survey(state)
+    count_questions = await CreateSurveyService.get_count_questions_in_survey(state)
 
     if save_edit_question:
-        await DoctorService.save_edit_question_id(
+        await CreateSurveyService.save_edit_question_id(
             state=state,
             question_id=current_question.id
         )
@@ -769,7 +768,7 @@ async def handle_get_list_questions(
         cell.font = Font(bold=True)
     
     # Получаем данные
-    question_dbms = await DoctorService.get_available_questions(user_dbm.tg_id)
+    question_dbms = await CreateSurveyService.get_available_questions(user_dbm.tg_id)
 
     for row, question_dbm in enumerate(question_dbms, start=2):
         answer_options = "; ".join(question_dbm.answer_options) if question_dbm.answer_options else ""

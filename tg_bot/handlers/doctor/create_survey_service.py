@@ -6,52 +6,19 @@ from aiogram.fsm.context import FSMContext
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, QuestionDBM, SurveyDBM, SurveyQuestionDBM
 from tg_bot.handlers.common.message_service import MessageService
-from tg_bot.handlers.doctor.survey_class import Question, Survey
+from tg_bot.handlers.doctor.survey_models import Question, CreatedSurvey
 
-class DoctorService:
-    _STATE_KEY_SURVEY = "survey"
-    _STATE_KEY_EDIT_QUESTION_ID = "edit_question_id"
-    _STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE = "survey_not_confirmed_title"
-
-    @staticmethod
-    async def get_selected_doctor(
-        doctor_id: int
-    ) -> UserDBM:
-        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
-            doctor_dbm = (await async_session.execute(
-                sqlalchemy
-                .select(UserDBM)
-                .where(UserDBM.tg_id == doctor_id)
-                .where(UserDBM.is_active)
-                .where(UserDBM.role == UserDBM.Roles.doctor)
-            )).scalar_one()
-        return doctor_dbm
-
-    @staticmethod
-    async def get_value_from_callback_data(
-        callback_data: str, 
-        position_index: int = 2, 
-        default_value: int = 0,
-        sep: str = ":",
-        type: type = int
-    ) -> int:
-        try:
-            value = type(callback_data.split(sep=sep)[position_index - 1])
-        except (IndexError, ValueError):
-            value = default_value
-        
-        return value
-
+class CreateSurveyService:
     @staticmethod
     async def _get_or_create_survey(
         state: FSMContext
-    ) -> Survey:
-        survey: Survey = await MessageService.get_state_data(
-            state=state, key=DoctorService._STATE_KEY_SURVEY,
+    ) -> CreatedSurvey:
+        survey: CreatedSurvey = await MessageService.get_state_data(
+            state=state, key=CreatedSurvey._STATE_KEY_SURVEY_DATA,
         )
 
         if survey is None:
-            survey = Survey()
+            survey = CreatedSurvey()
         
         return survey
 
@@ -62,7 +29,7 @@ class DoctorService:
     ):
         await MessageService.set_state_data(
             state=state,
-            key=DoctorService._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
+            key=CreatedSurvey._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
             value=title
         )
 
@@ -72,21 +39,21 @@ class DoctorService:
     ) -> None:
         title = await MessageService.get_state_data(
             state=state,
-            key=DoctorService._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
+            key=CreatedSurvey._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
         )
         if title:
-            survey = await DoctorService._get_or_create_survey(state)
+            survey = await CreateSurveyService._get_or_create_survey(state)
 
             survey.edith_survey_title(title=title)
 
-            await DoctorService._save_survey_changes(
+            await CreateSurveyService._save_survey_changes(
                 state=state,
                 survey=survey,
             )
 
             await MessageService.set_state_data(
                 state=state,
-                key=DoctorService._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
+                key=CreatedSurvey._STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE,
                 value=None
             )
     
@@ -94,18 +61,18 @@ class DoctorService:
     async def get_confirmed_survey_title(
         state: FSMContext,
     ):
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         return survey.title
 
     @staticmethod
     async def _save_survey_changes(
         state: FSMContext,
-        survey: Survey
+        survey: CreatedSurvey
     ) -> None:
         await MessageService.set_state_data(
             state=state,
-            key=DoctorService._STATE_KEY_SURVEY,
+            key=CreatedSurvey._STATE_KEY_SURVEY_DATA,
             value=survey,
         )
 
@@ -115,16 +82,16 @@ class DoctorService:
     ) -> str:
         return await MessageService.get_state_data(
             state=state, 
-            key=DoctorService._STATE_KEY_EDIT_QUESTION_ID,
+            key=CreatedSurvey._STATE_KEY_EDIT_QUESTION_ID,
         )
     
     @staticmethod
     async def _has_question_to_edit(
         state: FSMContext
     ) -> bool:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
-        question_id = await DoctorService._get_question_id_to_edit(state)
+        question_id = await CreateSurveyService._get_question_id_to_edit(state)
 
         return question_id and survey.get_question_by_id(question_id)
 
@@ -133,11 +100,11 @@ class DoctorService:
         state: FSMContext,
         question_id: str
     ):
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         await MessageService.set_state_data(
             state=state,
-            key=DoctorService._STATE_KEY_EDIT_QUESTION_ID,
+            key=CreatedSurvey._STATE_KEY_EDIT_QUESTION_ID,
             value=question_id,
         )        
 
@@ -149,7 +116,7 @@ class DoctorService:
         is_from_template: bool = False,
         template_question_id: Optional[int] = None,
     ) -> None:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         survey.add_question(
             text=text,
@@ -158,7 +125,7 @@ class DoctorService:
             template_question_id=template_question_id,
         )
 
-        await DoctorService._save_survey_changes(
+        await CreateSurveyService._save_survey_changes(
             state=state,
             survey=survey,
         )
@@ -171,10 +138,10 @@ class DoctorService:
         is_from_template: bool = False,
         template_question_id: Optional[int] = None,
     ) -> None:
-        if await DoctorService._has_question_to_edit(state):
-            survey = await DoctorService._get_or_create_survey(state)
+        if await CreateSurveyService._has_question_to_edit(state):
+            survey = await CreateSurveyService._get_or_create_survey(state)
             
-            edit_question_id = await DoctorService._get_question_id_to_edit(state)
+            edit_question_id = await CreateSurveyService._get_question_id_to_edit(state)
 
             survey.edit_question(
                 question_id=edit_question_id,
@@ -188,11 +155,11 @@ class DoctorService:
 
             await MessageService.set_state_data(
                 state=state,
-                key=DoctorService._STATE_KEY_EDIT_QUESTION_ID,
+                key=CreatedSurvey._STATE_KEY_EDIT_QUESTION_ID,
                 value=None,
             )
         
-            await DoctorService._save_survey_changes(
+            await CreateSurveyService._save_survey_changes(
                 state=state,
                 survey=survey,
             )
@@ -204,15 +171,15 @@ class DoctorService:
         is_from_template: bool = False,
         template_question_id: Optional[int] = None
     ) -> None:
-        if await DoctorService._has_question_to_edit(state):
-            await DoctorService.edit_question_in_survey(
+        if await CreateSurveyService._has_question_to_edit(state):
+            await CreateSurveyService.edit_question_in_survey(
                 state=state,
                 text=text,
                 is_from_template=is_from_template,
                 template_question_id=template_question_id,
             )
         else:
-            await DoctorService.add_question_to_survey(
+            await CreateSurveyService.add_question_to_survey(
                 state=state,
                 text=text,
                 is_from_template=is_from_template,
@@ -236,7 +203,7 @@ class DoctorService:
         state: FSMContext,
         answer_options: list[str]
     ) -> None:
-        survey = await DoctorService._get_or_create_survey(state) 
+        survey = await CreateSurveyService._get_or_create_survey(state) 
 
         curr_question = survey.get_current_question()
         
@@ -247,7 +214,7 @@ class DoctorService:
                 new_options=answer_options
             )
 
-            await DoctorService._save_survey_changes(
+            await CreateSurveyService._save_survey_changes(
                 state=state,
                 survey=survey,
             )
@@ -256,7 +223,7 @@ class DoctorService:
     async def get_survey_questions(
         state: FSMContext,
     ) -> list[Question]:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         return survey.get_active_questions()
 
@@ -264,7 +231,7 @@ class DoctorService:
     async def get_count_questions_in_survey(
         state: FSMContext
     ) -> int:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         
         return survey.count_valid_questions
     
@@ -272,27 +239,27 @@ class DoctorService:
     async def get_current_question(
         state: FSMContext,
     ) -> Question:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         return survey.get_current_question()
 
     @staticmethod
     async def remove_current_question(
         state: FSMContext,
     ) -> None:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         
         current_question = survey.get_current_question()
         
         if current_question:
             survey.remove_question(current_question.id)
-            await DoctorService._save_survey_changes(state, survey)
+            await CreateSurveyService._save_survey_changes(state, survey)
 
     @staticmethod
     async def get_question_by_id(
         state: FSMContext,
         question_id: str
     ) -> Optional[Question]:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         return survey.get_question_by_id(question_id)
 
     @staticmethod
@@ -300,14 +267,14 @@ class DoctorService:
         state: FSMContext,
         question_id: str
     ):
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         return survey.set_current_question(question_id)
 
     @staticmethod
     async def get_current_question_number(
         state: FSMContext
     ) -> int:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         
         questions = survey.get_active_questions()
         try:
@@ -324,7 +291,7 @@ class DoctorService:
         step: int,
 
     ) -> Optional[Question]:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
         
         current_question = survey.get_current_question()
         
@@ -347,7 +314,7 @@ class DoctorService:
     async def get_previous_question(
         state: FSMContext,
     ) -> Optional[Question]:
-        return await DoctorService._get_question_by_offset(
+        return await CreateSurveyService._get_question_by_offset(
             state=state, 
             step=-1
         )
@@ -356,7 +323,7 @@ class DoctorService:
     async def get_next_question(
         state: FSMContext,
     ) -> Optional[Question]:
-        return await DoctorService._get_question_by_offset(
+        return await CreateSurveyService._get_question_by_offset(
             state=state, 
             step=1
         )
@@ -385,7 +352,7 @@ class DoctorService:
         user_id: int,
         template_question_id: int,
     ) -> bool:
-        question_dbm = await DoctorService._get_template_question_from_db(
+        question_dbm = await CreateSurveyService._get_template_question_from_db(
             user_id=user_id, 
             template_question_id=template_question_id,
         )
@@ -393,7 +360,7 @@ class DoctorService:
         if question_dbm is None:
             return False
 
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         survey.add_question(
             text=question_dbm.question_text,
@@ -402,7 +369,7 @@ class DoctorService:
             template_question_id=question_dbm.id
         )
 
-        await DoctorService._save_survey_changes(
+        await CreateSurveyService._save_survey_changes(
             state=state,
             survey=survey,
         )
@@ -415,17 +382,17 @@ class DoctorService:
         user_id: int,
         template_question_id: int
     ) -> bool:
-        question_dbm = await DoctorService._get_template_question_from_db(
+        question_dbm = await CreateSurveyService._get_template_question_from_db(
             user_id=user_id,
             template_question_id=template_question_id,
         )
         if question_dbm is None:
             return False
 
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
-        if await DoctorService._has_question_to_edit(state):
-            question_id = await DoctorService._get_question_id_to_edit(
+        if await CreateSurveyService._has_question_to_edit(state):
+            question_id = await CreateSurveyService._get_question_id_to_edit(
                 state=state
             )
 
@@ -439,7 +406,7 @@ class DoctorService:
 
             await MessageService.set_state_data(
                 state=state,
-                key=DoctorService._STATE_KEY_EDIT_QUESTION_ID,
+                key=CreatedSurvey._STATE_KEY_EDIT_QUESTION_ID,
                 value=None,
             )
         else:
@@ -450,7 +417,7 @@ class DoctorService:
                 template_question_id=question_dbm.id
             )
 
-        await DoctorService._save_survey_changes(
+        await CreateSurveyService._save_survey_changes(
             state=state,
             survey=survey
         )
@@ -529,7 +496,7 @@ class DoctorService:
     ):
         await MessageService.set_state_data(
             state,
-            key=DoctorService._STATE_KEY_SURVEY,
+            key=CreatedSurvey._STATE_KEY_SURVEY_DATA,
             value=None
         )
 
@@ -538,20 +505,20 @@ class DoctorService:
         state: FSMContext,
         user_id: int
     ) -> bool:
-        survey = await DoctorService._get_or_create_survey(state)
+        survey = await CreateSurveyService._get_or_create_survey(state)
 
         if survey.count_valid_questions == 0:
             return False
         
         async with get_cached_sqlalchemy_db().new_async_session() as session:
-            survey_dbm = await DoctorService._create_survey_record(
+            survey_dbm = await CreateSurveyService._create_survey_record(
                 session=session,
                 title=survey.title,
                 user_id=user_id
             )
 
             for order, question in enumerate(survey.get_active_questions(), 1):
-                added = await DoctorService._create_question_record(
+                added = await CreateSurveyService._create_question_record(
                     session=session,
                     user_id=user_id,
                     survey_id=survey_dbm.id,
@@ -561,7 +528,7 @@ class DoctorService:
             
             await session.commit()
         
-        await DoctorService.clear_survey_data(
+        await CreateSurveyService.clear_survey_data(
             state=state,
             user_id=user_id,
         )
@@ -583,3 +550,6 @@ class DoctorService:
             )).scalars().unique().all()
         
         return question_dbms
+    
+
+

@@ -2,7 +2,7 @@ from typing import Optional
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from tg_bot.handlers.doctor.survey_class import Question
+from tg_bot.handlers.doctor.survey_models import Question
 from tg_bot.keyboards.common.common import CommonKeyboard
 from tg_bot.keyboards.doctor.callback_data import DoctorAction
 
@@ -32,6 +32,8 @@ class DoctorKeyboard(CommonKeyboard):
         keyboard.adjust(1)
         return keyboard.as_markup()
     
+    """Создание опроса"""
+
     @staticmethod
     def get_question_type_selection_keyboard(
         count_questions: int = 0
@@ -214,4 +216,126 @@ class DoctorKeyboard(CommonKeyboard):
         )
         
         keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    """Планирование опроса"""
+
+    @staticmethod
+    def get_survey_schedule_type_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура выбора типа расписания опроса"""
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="🔄 Несколько раз в день",
+            callback_data=DoctorAction.CHOOSE_MULTIPLE_TIMES_PER_DAY
+        )
+        keyboard.button(
+            text="☀️ Раз в день",
+            callback_data=DoctorAction.CHOOSE_ONCE_PER_DAY
+        )
+        keyboard.button(
+            text="📆 Раз в несколько дней",
+            callback_data=DoctorAction.CHOOSE_EVERY_FEW_DAYS
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_multiple_times_per_day_keyboard(flag: bool = True) -> InlineKeyboardMarkup:
+        """Клавиатура выбора количества опросов в день"""
+        keyboard = InlineKeyboardBuilder()
+        if flag:
+            for i in range(1, 6):
+                keyboard.button(
+                    text=f"{i} раз{'а' if 2 <= i <=4 else ''} в день",
+                    callback_data=f"{DoctorAction.SET_TIMES_PER_DAY.value}:{i}"
+                )
+            
+        keyboard.button(
+            text="↩️ Назад к выбору типа",
+            callback_data=DoctorAction.SCHEDULE_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        keyboard.adjust(2, 2, 1, 1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_schedule_confirmation_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура подтверждения расписания"""
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="✅ Подтвердить расписание",
+            callback_data=DoctorAction.CONFIRM_SCHEDULE
+        )
+        keyboard.button(
+            text="✏️ Изменить параметры",
+            callback_data=DoctorAction.SCHEDULE_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_back_to_schedule_type_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура возврата к выбору типа расписания"""
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="↩️ Назад к выбору типа",
+            callback_data=DoctorAction.SCHEDULE_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_every_few_days_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура выбора интервала в днях"""
+        keyboard = InlineKeyboardBuilder()
+        
+        # Кнопки выбора интервала (1-5 дней)
+        intervals = {
+            1: "день",
+            2: "дня",
+            3: "дня",
+            4: "дня",
+            5: "дней"
+        }
+        
+        for days in range(1, 6):
+            keyboard.button(
+                text=f"Раз в {days} {intervals[days]}",
+                callback_data=f"{DoctorAction.SET_INTERVAL_DAYS.value}:{days}"
+            )
+        
+        # Кнопки навигации
+        keyboard.button(
+            text="↩️ Назад к выбору типа",
+            callback_data=DoctorAction.SCHEDULE_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        # Расположение кнопок (первые 5 - выбор интервала, затем навигация)
+        keyboard.adjust(2, 2, 1, 2)
         return keyboard.as_markup()

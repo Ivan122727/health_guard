@@ -1,6 +1,9 @@
+from datetime import datetime
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from uuid import uuid4
+
+from shared.sqlalchemy_db_.sqlalchemy_model import ScheduledSurveyDBM
 
 @dataclass
 class Question:
@@ -11,7 +14,11 @@ class Question:
     is_from_template: bool = False
     template_question_id: Optional[int] = None
 
-class Survey:
+class CreatedSurvey:
+    _STATE_KEY_SURVEY_DATA = "create_survey"
+    _STATE_KEY_EDIT_QUESTION_ID = "create_survey_edit_question_id"
+    _STATE_KEY_SURVEY_NOT_CONFIRMED_TITLE = "create_survey_not_confirmed_title"
+
     def __init__(self):
         self.questions: Dict[str, Question] = {}  # id: Question
         self.current_question_id: Optional[str] = None
@@ -92,7 +99,7 @@ class Survey:
 
     def get_active_questions(self) -> List[Question]:
         """Возвращает список активных вопросов в порядке добавления"""
-        return [q for q in self.questions.values() if Survey.is_valid_question(q)]
+        return [q for q in self.questions.values() if CreatedSurvey.is_valid_question(q)]
     
     def get_question_by_id(self, question_id: str) -> Optional[Question]:
         """Возвращает вопрос по ID"""
@@ -107,3 +114,36 @@ class Survey:
     @property
     def count_valid_questions(self) -> int:
         return len(self.get_active_questions())
+
+
+@dataclass
+class Survey:
+    survey_id: Optional[int] = None
+    patient_id: Optional[int] = None
+    doctor_id: Optional[int] = None
+    frequency_type: Optional[str] = None 
+    times_per_day: Optional[int] = None
+    interval_days: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    max_reminders: int = 3
+    reminder_interval_hours: int = 2
+
+
+class ScheduledSurvey:
+    _STATE_KEY_SURVEY_DATA = "schedule_survey"
+    
+    def __init__(self):
+        self.survey = Survey()
+    
+    def set_frequency_type(self, frequency_type: str):
+        if frequency_type in ScheduledSurveyDBM.FrequencyType:
+            self.survey.frequency_type = frequency_type
+        
+    def set_times_per_day(self, times_per_day: int):
+        if self.survey.frequency_type is ScheduledSurveyDBM.FrequencyType.MULTIPLE_TIMES_PER_DAY:
+            self.survey.times_per_day = times_per_day
+        
+    def set_interval_days(self, interval_days: int):
+        if self.survey.frequency_type in ScheduledSurveyDBM.FrequencyType.EVERY_FEW_DAYS:
+            self.survey.interval_days = interval_days

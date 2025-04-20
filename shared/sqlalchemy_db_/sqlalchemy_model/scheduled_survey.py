@@ -14,10 +14,9 @@ class ScheduledSurveyDBM(SimpleDBM):
     __tablename__ = "scheduled_surveys"
 
     class FrequencyType(str, Enum):
-        ONCE = "once"
-        DAILY = "daily"
-        WEEKLY = "weekly"
-        CUSTOM = "custom"
+        MULTIPLE_TIMES_PER_DAY = "multiple_times_per_day" 
+        ONCE_PER_DAY = "once_per_day"
+        EVERY_FEW_DAYS = "every_few_days"
 
         @classmethod
         def to_set(cls) -> set[str]:
@@ -47,15 +46,21 @@ class ScheduledSurveyDBM(SimpleDBM):
     frequency_type: Mapped[str] = mapped_column(
         sqlalchemy.String(20),
         nullable=False,
-        comment="Тип расписания: once, daily, weekly, custom"
+        comment="Тип опроса: multiple_times_per_day, once_per_day, every_few_days"
     )
     
     times_per_day: Mapped[Optional[int]] = mapped_column(
         sqlalchemy.INTEGER,
         nullable=True,
-        comment="Количество опросов в день"
+        comment="Количество опросов в день если тип (multiple_times_per_day)"
     )
     
+    interval_days: Mapped[Optional[int]] = mapped_column(
+        sqlalchemy.INTEGER,
+        nullable=True,
+        comment="Интервал в днях между опросами для типа (every_few_days)"
+    )
+
     start_date: Mapped[datetime] = mapped_column(
         sqlalchemy.TIMESTAMP,
         nullable=False,
