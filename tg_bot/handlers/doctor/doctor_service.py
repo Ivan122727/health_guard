@@ -220,10 +220,16 @@ class DoctorService:
             )    
 
     @staticmethod
+    async def is_valid_answer_options(
+        raw_options: str
+    ) -> bool:
+        return 1 < len(raw_options.split("\n")) < 11 
+
+    @staticmethod
     async def parse_answer_options(
         raw_options: str
     ) -> list[str]:
-        return list(raw_options.split())
+        return list(raw_options.split("\n"))
 
     @staticmethod
     async def add_options_to_current_question(
@@ -561,3 +567,19 @@ class DoctorService:
         )
 
         return True
+    
+    @staticmethod
+    async def get_available_questions(
+        user_id: int
+    ) -> list[QuestionDBM]:
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            question_dbms = (await session.execute(
+                sqlalchemy
+                .select(QuestionDBM)
+                .where(
+                    (QuestionDBM.created_by == user_id) |
+                    (QuestionDBM.is_public)
+                )
+            )).scalars().unique().all()
+        
+        return question_dbms

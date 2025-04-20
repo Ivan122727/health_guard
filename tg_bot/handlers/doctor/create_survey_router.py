@@ -1,6 +1,12 @@
+import os
+import uuid
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
+from openpyxl.utils import get_column_letter
+
 
 from shared.sqlalchemy_db_.sqlalchemy_model.user import UserDBM
 from tg_bot.handlers.common.message_service import MessageService
@@ -107,24 +113,35 @@ async def handle_edit_survey_title(
     )
 
 async def proccess_handle_choose_type_question(
-    callback_query: CallbackQuery,
+    message: Message,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
     blank: type[DoctorBlank],
-    user_dbm: type[UserDBM]
+    user_dbm: type[UserDBM],
+    from_cq: bool = True
 ):
     count_questions = await DoctorService.get_count_questions_in_survey(state)
 
+    message_from_cq = message if from_cq else None
+
     await MessageService.edith_managed_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
+        bot=message.bot,
+        user_id=user_dbm.tg_id,
         text=blank.get_choose_type_survey_blank(),
         reply_markup=keyboard.get_question_type_selection_keyboard(count_questions),
         state=state,
         previous_message_key="start_msg_id",
         message_id_storage_key="start_msg_id",
-        message=callback_query.message,
+        message=message_from_cq,
+        new_state=CreateSurveyStates.waiting_choose_type_question
     )
+
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )    
 
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_TITLE_SURVEY.value))
 async def handle_confirm_title_survey(
@@ -139,7 +156,7 @@ async def handle_confirm_title_survey(
     )
 
     await proccess_handle_choose_type_question(
-        callback_query=callback_query,
+        message=callback_query.message,
         state=state,
         keyboard=keyboard,
         blank=blank,
@@ -147,7 +164,7 @@ async def handle_confirm_title_survey(
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.CHOOSE_TYPE_QUESTION.value))
-async def handle_choose_type_question(
+async def handle_choose_type_question_cq(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -155,51 +172,153 @@ async def handle_choose_type_question(
     user_dbm: type[UserDBM]
 ):
     await proccess_handle_choose_type_question(
-        callback_query=callback_query,
+        message=callback_query.message,
         state=state,
         keyboard=keyboard,
         blank=blank,
         user_dbm=user_dbm
     )
 
-@router.callback_query(F.data.startswith(DoctorAction.CREATE_NEW_QUESTION.value))
-async def handle_choose_new_question_type(
-    callback_query: CallbackQuery,
+@router.message(CreateSurveyStates.waiting_choose_type_question)
+async def handle_choose_type_question(
+    message: Message,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
+    await proccess_handle_choose_type_question(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False,
+    )
+
+async def proccess_choose_new_question_select(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True
+):
+    message_from_cq = message if from_cq else None
+
     await MessageService.edith_managed_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
+        bot=message.bot,
+        user_id=user_dbm.tg_id,
         text=blank.get_create_from_scratch_blank(),
         reply_markup=keyboard.get_confirm_create_new_question_keyboard(),
         state=state,
         previous_message_key="start_msg_id",
         message_id_storage_key="start_msg_id",
-        message=callback_query.message,
+        message=message_from_cq,
+        new_state=CreateSurveyStates.waiting_create_new_question_select,
     )
 
-@router.callback_query(F.data.startswith(DoctorAction.CREATE_TEMPLATE_QUESTION.value))
-async def handle_choose_template_question_type(
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id
+        )
+
+@router.callback_query(F.data.startswith(DoctorAction.CREATE_NEW_QUESTION.value))
+async def handle_choose_new_question_type_cq(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
+    await proccess_choose_new_question_select(
+        message=callback_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm
+    )
+
+@router.message(CreateSurveyStates.waiting_create_new_question_select)
+async def handle_choose_new_question_type(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await proccess_choose_new_question_select(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False
+    )
+
+async def proccess_choose_template_question_select(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True
+):
+    message_from_cq = message if from_cq else None
+
     await MessageService.edith_managed_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
+        bot=message.bot,
+        user_id=user_dbm.tg_id,
         text=blank.get_use_template_blank(),
         reply_markup=keyboard.get_confirm_create_template_question_keyboard(),
         state=state,
         previous_message_key="start_msg_id",
         message_id_storage_key="start_msg_id",
-        message=callback_query.message,
+        message=message_from_cq,
+        new_state=CreateSurveyStates.waiting_create_template_question_select
     )
 
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id
+        )
+
+@router.callback_query(F.data.startswith(DoctorAction.CREATE_TEMPLATE_QUESTION.value))
+async def handle_choose_template_question_type_cq(
+    callback_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await proccess_choose_template_question_select(
+        message=callback_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+    )
+
+@router.message(CreateSurveyStates.waiting_create_template_question_select)
+async def handle_choose_template_question_type(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await proccess_choose_template_question_select(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False,
+    )
 
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_CREATE_NEW_QUESTION.value))
 async def handle_confirm_new_question_type(
@@ -440,16 +559,18 @@ async def handle_cancel_create_survey(
 
 
 async def proccess_handle_edit_survey(
-    callback_query: CallbackQuery,
+    message: Message,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
     blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True
 ):
-    question = await DoctorService.get_current_question(state)
+    message_from_cq = message if from_cq else None
 
     await MessageService.edith_managed_message(
-        bot=callback_query.bot,
-        user_id=callback_query.from_user.id,
+        bot=message.bot,
+        user_id=user_dbm.tg_id,
         text=blank.get_question_info(
             current_question=await DoctorService.get_current_question(state),
             question_number=await DoctorService.get_current_question_number(state),
@@ -463,12 +584,19 @@ async def proccess_handle_edit_survey(
         state=state,
         previous_message_key="start_message_id",
         message_id_storage_key="start_message_id",
-        message=callback_query.message,
-        new_state=None
+        message=message_from_cq,
+        new_state=CreateSurveyStates.edit_survey
     )
 
+    if from_cq == False:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )
+
 @router.callback_query(F.data.startswith(DoctorAction.EDIT_SURVEY.value))
-async def handle_edit_survey(
+async def handle_edit_survey_cq(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -476,10 +604,28 @@ async def handle_edit_survey(
     user_dbm: type[UserDBM]
 ):
     await proccess_handle_edit_survey(
-        callback_query=callback_query,
+        message=callback_query.message,
         state=state,
         keyboard=keyboard,
-        blank=blank
+        blank=blank,
+        user_dbm=user_dbm,
+    )
+
+@router.message(CreateSurveyStates.edit_survey)
+async def handle_edit_survey(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await proccess_handle_edit_survey(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False,
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.SET_CURRENT_QUESTION.value))
@@ -503,10 +649,11 @@ async def handle_set_current_question(
         )
     
     await proccess_handle_edit_survey(
-        callback_query=callback_query,
+        message=callback_query.message,
         state=state,
         keyboard=keyboard,
-        blank=blank
+        blank=blank,
+        user_dbm=user_dbm,
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.REMOVE_CURRENT_QUESTION.value))
@@ -520,10 +667,11 @@ async def handle_remove_current_question(
     await DoctorService.remove_current_question(state)
     
     await proccess_handle_edit_survey(
-        callback_query=callback_query,
+        message=callback_query.message,
         state=state,
         keyboard=keyboard,
-        blank=blank
+        blank=blank,
+        user_dbm=user_dbm,
     )
 
 async def process_handle_create_question(
@@ -595,3 +743,57 @@ async def handle_edit_current_question(
         user_dbm=user_dbm,
         save_edit_question=True
     )
+
+@router.callback_query(F.data.startswith(DoctorAction.GET_LIST_QUESTIONS.value))
+async def handle_get_list_questions(
+    callback_query: CallbackQuery,
+    user_dbm: type[UserDBM]
+):
+    await callback_query.answer()
+    wb = Workbook()
+    ws = wb.active
+    
+    # Добавляем заголовки
+    headers = ["question_id", "question_text", "answer_options", "created_by", "is_public"]
+    ws.append(headers)
+    
+    # Получаем данные
+    question_dbms = await DoctorService.get_available_questions(user_dbm.tg_id)
+
+    for question_dbm in question_dbms:
+        ws.append([
+            question_dbm.id, 
+            question_dbm.question_text, 
+            "; ".join(question_dbm.answer_options), 
+            question_dbm.created_by, 
+            question_dbm.is_public
+        ])
+    
+    # Автоматическая подгонка ширины столбцов
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        
+        for cell in column:
+            try:
+                # Для правильного расчета длины строки
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        
+        # Устанавливаем ширину с небольшим запасом
+        adjusted_width = (max_length + 2) * 1.2
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Сохраняем и отправляем файл
+    file_path = f'./{uuid.uuid4()}.xlsx'
+    wb.save(file_path)
+    
+    try:
+        stat_file = FSInputFile(file_path)
+        await callback_query.message.answer_document(stat_file)
+    finally:
+        # Удаляем временный файл в любом случае
+        if os.path.exists(file_path):
+            os.remove(file_path)
