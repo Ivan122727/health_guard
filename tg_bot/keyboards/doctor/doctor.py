@@ -2,6 +2,7 @@ from typing import Optional
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from shared.sqlalchemy_db_.sqlalchemy_model.survey import SurveyDBM
 from tg_bot.handlers.doctor.survey_models import Question
 from tg_bot.keyboards.common.common import CommonKeyboard
 from tg_bot.keyboards.doctor.callback_data import DoctorAction
@@ -361,4 +362,60 @@ class DoctorKeyboard(CommonKeyboard):
                 callback_data=DoctorAction.CONFIRM_DATE_PERIOD
             )
         keyboard.adjust(2, 1)
+        return keyboard.as_markup()
+    
+    @staticmethod
+    def get_survey_selection_keyboard(
+        survey_dbms: list[SurveyDBM],
+        page: int = 0,
+        per_page: int = 5
+    ) -> InlineKeyboardMarkup:
+        """Клавиатура выбора опроса с пагинацией
+        
+        Args:
+            surveys: Полный список опросов
+            page: Текущая страница (начиная с 0)
+            per_page: Количество опросов на странице
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Добавляем кнопки опросов (каждая в отдельную строку)
+        for survey in survey_dbms[page * per_page : page * per_page + per_page]:
+            keyboard.button(
+                text=f"📋 {survey.title} (ID: {survey.id})",
+                callback_data=f"{DoctorAction.SELECT_SURVEY.value}:{survey.id}"
+            )
+            keyboard.adjust(1)  # Каждый опрос на новой строке
+        
+        # Кнопки пагинации в одной строке
+        pagination_buttons = []
+        
+        if (page * per_page - per_page) >= 0:
+            pagination_buttons.append((
+                "⬅️ Назад",
+                f"{DoctorAction.CONFIRM_DATE_PERIOD.value}:{page - 1}"
+            ))
+            
+        if (page * per_page + per_page) < len(survey_dbms):
+            pagination_buttons.append((
+                "Вперёд ➡️",
+                f"{DoctorAction.CONFIRM_DATE_PERIOD.value}:{page + 1}"
+            ))
+        
+        # Добавляем кнопки пагинации
+        for text, callback_data in pagination_buttons:
+            keyboard.button(text=text, callback_data=callback_data)
+        
+        # Кнопки управления
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        # Настраиваем layout
+        if len(pagination_buttons) == 2:
+            keyboard.adjust(*[1]*per_page, 2, 1)  # Опросы по 1, пагинация 2 в ряд, назад внизу
+        else:
+            keyboard.adjust(*[1]*(per_page + len(pagination_buttons) + 1))  # Все по 1 в ряд
+        
         return keyboard.as_markup()

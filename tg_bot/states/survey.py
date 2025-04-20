@@ -20,5 +20,6 @@ class ScheduleSurveyStates(StatesGroup):
     # Тип раз в несколько дней    
     waiting_choose_every_few_days = State()
     waiting_set_interval_days = State()
-    # Вводи даты
+    # Ввод периода
     waiting_survey_period = State()
+    waiting_select_survey = State()

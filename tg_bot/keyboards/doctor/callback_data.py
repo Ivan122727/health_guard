@@ -33,3 +33,4 @@ class DoctorAction(str, Enum):
     CANCEL_SCHEDULING = "cancel_scheduling"
     SET_SURVEY_PERIOD = "set_survey_period"
     CONFIRM_DATE_PERIOD = "confirm_date_period"
+    SELECT_SURVEY = "select_survey"

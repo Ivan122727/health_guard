@@ -10,7 +10,7 @@ sys.path.append(str(parent_dir))
 os.chdir(parent_dir)
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM
 
 async def main():
     get_cached_sqlalchemy_db().reinit()
@@ -25,6 +25,16 @@ async def main():
             async_session.add(doctor_dbm)
             await async_session.commit()
 
+    get_cached_sqlalchemy_db().init()
+
+    async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+        for i in range(20):
+            doctor_dbm = SurveyDBM(
+                created_by=457643251,
+                title=f"Пустой опрос {i}",
+            )
+            async_session.add(doctor_dbm)
+            await async_session.commit()
 
 if __name__ == "__main__":
     import asyncio

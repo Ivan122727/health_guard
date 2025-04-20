@@ -604,3 +604,88 @@ async def handle_set_interval_days(
             user_id=user_dbm.tg_id,
             message_id=message.message_id,
     )
+
+
+async def proccess_handle_survey_selection(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    page: int = 0,
+    from_cq: bool = False,
+):
+    survey_dbms = await ScheduleSurveyService.get_available_surveys(
+        user_id=user_dbm.tg_id,
+    )
+
+    message_from_cq = message if from_cq else None
+
+    await MessageService.edith_managed_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            text=blank.get_survey_selection_blank(len(survey_dbms)),
+            reply_markup=keyboard.get_survey_selection_keyboard(
+                survey_dbms=survey_dbms,
+                page=page,
+            ),
+            state=state,
+            previous_message_key="start_msg_id",
+            message_id_storage_key="start_msg_id",
+            new_state=ScheduleSurveyStates.waiting_select_survey,
+            message=message_from_cq,
+    )
+
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )
+
+@router.callback_query(F.data.startswith(DoctorAction.CONFIRM_DATE_PERIOD.value))
+async def handle_survey_selection_cq(
+    call_back_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    current_page = await MessageService.get_value_from_callback_data(
+        callback_data=call_back_query.data,
+        default_value=0,
+    )
+
+    await ScheduleSurveyService.save_current_select_page(
+        state=state,
+        page=current_page,
+    )
+
+    await proccess_handle_survey_selection(
+        message=call_back_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        page=current_page,
+        from_cq=True,
+    )
+
+@router.message(ScheduleSurveyStates.waiting_select_survey)
+async def handle_survey_selection(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    current_page = await ScheduleSurveyService.get_select_current_page(state)
+
+    await proccess_handle_survey_selection(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        page=current_page,
+    )

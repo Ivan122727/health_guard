@@ -47,6 +47,13 @@ class ScheduleSurveyService:
             value=None,
         )
 
+        await MessageService.set_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+            value=None,
+        )
+
+
     @staticmethod
     async def save_frequency_type_survey(
         state: FSMContext,
@@ -159,3 +166,42 @@ class ScheduleSurveyService:
             state=state,
             survey=survey,
         )
+    
+    @staticmethod
+    async def get_available_surveys(
+        user_id: int,
+    ):
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            survey_dbms = (await session.execute(
+                sqlalchemy
+                .select(SurveyDBM)
+                .where(SurveyDBM.created_by == user_id)
+                .where(SurveyDBM.is_active)
+            )).scalars().unique().all()
+
+        return survey_dbms
+
+    @staticmethod
+    async def save_current_select_page(
+        state: FSMContext,
+        page: int
+    ) -> None:
+        await MessageService.set_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+            value=page,
+        )
+    
+    @staticmethod
+    async def get_select_current_page(
+        state: FSMContext,
+    ) -> Optional[int]:
+        current_page = await MessageService.get_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+        )
+        
+        if current_page:
+            return current_page
+        
+        return None 
