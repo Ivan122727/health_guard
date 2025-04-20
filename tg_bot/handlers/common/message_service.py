@@ -139,6 +139,17 @@ class MessageService:
                     state=state,
                     new_state=new_state
                 )
+            else:
+                await MessageService.send_managed_message(
+                    bot=bot,
+                    user_id=user_id,
+                    text=text,
+                    reply_markup=reply_markup,
+                    state=state,
+                    previous_message_key=previous_message_key,
+                    new_state=new_state,
+                    message_id_storage_key=message_id_storage_key
+                )
         except TelegramBadRequest as e:
             await MessageService.send_managed_message(
                 bot=bot,
