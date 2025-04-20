@@ -579,7 +579,7 @@ class DoctorService:
                 .where(
                     (QuestionDBM.created_by == user_id) |
                     (QuestionDBM.is_public)
-                )
+                ).order_by(QuestionDBM.id)
             )).scalars().unique().all()
         
         return question_dbms

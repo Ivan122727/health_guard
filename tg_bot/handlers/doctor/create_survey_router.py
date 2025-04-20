@@ -4,7 +4,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 from openpyxl import Workbook
-from openpyxl.styles import Alignment
+from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
 
 
@@ -747,42 +747,65 @@ async def handle_edit_current_question(
 @router.callback_query(F.data.startswith(DoctorAction.GET_LIST_QUESTIONS.value))
 async def handle_get_list_questions(
     callback_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
     await callback_query.answer()
     wb = Workbook()
     ws = wb.active
     
-    # Добавляем заголовки
-    headers = ["question_id", "question_text", "answer_options", "created_by", "is_public"]
+    # Настройки по умолчанию
+    ws.row_dimensions[1].height = 20  # Высота заголовков
+    alignment = Alignment(wrap_text=True, vertical='top')
+    
+    # Заголовки
+    headers = ["ID вопроса", "Текст вопроса", "Варианты ответов", "Создатель", "Публичный"]
     ws.append(headers)
+    
+    # Жирный шрифт для заголовков
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
     
     # Получаем данные
     question_dbms = await DoctorService.get_available_questions(user_dbm.tg_id)
 
-    for question_dbm in question_dbms:
+    for row, question_dbm in enumerate(question_dbms, start=2):
+        answer_options = "; ".join(question_dbm.answer_options) if question_dbm.answer_options else ""
         ws.append([
             question_dbm.id, 
             question_dbm.question_text, 
-            "; ".join(question_dbm.answer_options), 
+            answer_options, 
             question_dbm.created_by, 
-            question_dbm.is_public
+            "Да" if question_dbm.is_public else "Нет"
         ])
-    
-    # Автоматическая подгонка ширины столбцов
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
         
-        for cell in column:
+        # Настраиваем перенос текста и выравнивание
+        for col in range(1, 6):
+            cell = ws.cell(row=row, column=col)
+            cell.alignment = alignment
+            
+            # Автоматическая высота строки для многострочного текста
+            if col in [2, 3]:  # Для столбцов с текстом вопроса и вариантами
+                lines = str(cell.value).count('\n') + 1
+                ws.row_dimensions[row].height = 15 * lines  # ~15 пунктов на строку
+    
+    # Автоматическая ширина столбцов
+    for col in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(col[0].column)
+        
+        for cell in col:
             try:
-                # Для правильного расчета длины строки
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
+                # Учитываем переносы строк
+                lines = str(cell.value).split('\n')
+                line_length = max(len(line) for line in lines) if lines else 0
+                if line_length > max_length:
+                    max_length = line_length
             except:
                 pass
         
-        # Устанавливаем ширину с небольшим запасом
         adjusted_width = (max_length + 2) * 1.2
         ws.column_dimensions[column_letter].width = adjusted_width
     
@@ -794,6 +817,5 @@ async def handle_get_list_questions(
         stat_file = FSInputFile(file_path)
         await callback_query.message.answer_document(stat_file)
     finally:
-        # Удаляем временный файл в любом случае
         if os.path.exists(file_path):
             os.remove(file_path)
