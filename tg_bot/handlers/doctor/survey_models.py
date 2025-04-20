@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from uuid import uuid4
@@ -124,26 +124,33 @@ class Survey:
     frequency_type: Optional[str] = None 
     times_per_day: Optional[int] = None
     interval_days: Optional[int] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    schedule_times: Optional[list[time]] = None
     max_reminders: int = 3
     reminder_interval_hours: int = 2
-
 
 class ScheduledSurvey:
     _STATE_KEY_SURVEY_DATA = "schedule_survey"
     
     def __init__(self):
         self.survey = Survey()
-    
-    def set_frequency_type(self, frequency_type: str):
+
+    def set_frequency_type(self, frequency_type: str) -> None:
         if frequency_type in ScheduledSurveyDBM.FrequencyType:
             self.survey.frequency_type = frequency_type
         
-    def set_times_per_day(self, times_per_day: int):
+    def set_times_per_day(self, times_per_day: int) -> None:
         if self.survey.frequency_type is ScheduledSurveyDBM.FrequencyType.MULTIPLE_TIMES_PER_DAY:
             self.survey.times_per_day = times_per_day
         
-    def set_interval_days(self, interval_days: int):
+    def set_interval_days(self, interval_days: int) -> None:
         if self.survey.frequency_type in ScheduledSurveyDBM.FrequencyType.EVERY_FEW_DAYS:
             self.survey.interval_days = interval_days
+
+    def save_times(self, schedule_times: list[time]) -> None:
+        self.survey.schedule_times = schedule_times
+
+    def save_survey_period(self, start_date: date, end_date: date) -> None:
+        self.survey.start_date = start_date
+        self.survey.end_date = end_date

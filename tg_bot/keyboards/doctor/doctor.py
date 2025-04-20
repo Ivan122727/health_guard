@@ -339,3 +339,26 @@ class DoctorKeyboard(CommonKeyboard):
         # Расположение кнопок (первые 5 - выбор интервала, затем навигация)
         keyboard.adjust(2, 2, 1, 2)
         return keyboard.as_markup()
+
+    @staticmethod
+    def get_date_period_keyboard(
+        has_both_dates: bool = False
+    ):
+        keyboard = InlineKeyboardBuilder()
+        
+        keyboard.button(
+            text="↩️ Назад к выбору типа",
+            callback_data=DoctorAction.SCHEDULE_SURVEY
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+
+        if has_both_dates:
+            keyboard.button(
+                text="✅ Сохранить период",
+                callback_data=DoctorAction.CONFIRM_DATE_PERIOD
+            )
+        keyboard.adjust(2, 1)
+        return keyboard.as_markup()
