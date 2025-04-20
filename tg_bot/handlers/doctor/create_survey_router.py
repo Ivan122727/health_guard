@@ -20,6 +20,8 @@ async def handle_create_title_survey(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
+    await callback_query.answer()
+    
     count_questions = await DoctorService.get_count_questions_in_survey(state)
     
     await MessageService.edith_managed_message(

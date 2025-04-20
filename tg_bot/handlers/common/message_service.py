@@ -30,7 +30,7 @@ class MessageService:
                 pass
     
     @staticmethod
-    async def edith_previous_message(
+    async def _edith_previous_message(
         bot: Bot,
         text: str,
         user_id: int,
@@ -38,7 +38,7 @@ class MessageService:
         reply_markup: Optional[InlineKeyboardMarkup] = None,
         state: Optional[FSMContext] = None,
         new_state: Optional[State] = None
-    ):
+    ) -> bool:
         if message_id:
             try:
                 await bot.edit_message_text(
@@ -51,10 +51,13 @@ class MessageService:
                     message_id=message_id,
                     reply_markup=reply_markup
                 )
-            except Exception as e:
-                pass
+                need_to_resend_message = False
+            except TelegramBadRequest:
+                need_to_resend_message = True
         if state:
             await state.set_state(new_state)
+
+        return need_to_resend_message
 
     @staticmethod
     async def send_managed_message(
@@ -126,31 +129,22 @@ class MessageService:
             await state.update_data({previous_message_key: message.message_id})
             state_data = await state.get_data()
 
-        try:
-            if state and state_data.get(previous_message_key):
-                message_id = state_data.get(previous_message_key)
-                
-                await MessageService.edith_previous_message(
-                    bot=bot,
-                    text=text,
-                    user_id=user_id,
-                    message_id=message_id,
-                    reply_markup=reply_markup,
-                    state=state,
-                    new_state=new_state
-                )
-            else:
-                await MessageService.send_managed_message(
-                    bot=bot,
-                    user_id=user_id,
-                    text=text,
-                    reply_markup=reply_markup,
-                    state=state,
-                    previous_message_key=previous_message_key,
-                    new_state=new_state,
-                    message_id_storage_key=message_id_storage_key
-                )
-        except TelegramBadRequest as e:
+        need_to_resend_message = True
+
+        if state and state_data.get(previous_message_key):
+            message_id = state_data.get(previous_message_key)
+            
+            need_to_resend_message = await MessageService._edith_previous_message(
+                bot=bot,
+                text=text,
+                user_id=user_id,
+                message_id=message_id,
+                reply_markup=reply_markup,
+                state=state,
+                new_state=new_state
+            )
+        
+        if need_to_resend_message:
             await MessageService.send_managed_message(
                 bot=bot,
                 user_id=user_id,
