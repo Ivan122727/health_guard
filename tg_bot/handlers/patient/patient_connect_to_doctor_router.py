@@ -21,7 +21,7 @@ async def handle_select_doctor_request(
 ):
     await callback_query.answer()
 
-    page = await PatientService.get_number_from_callback_data(callback_query.data)
+    page = await PatientService.get_value_from_callback_data(callback_query.data)
 
     available_doctors = await PatientService.get_available_doctors()
 
@@ -43,7 +43,7 @@ async def handle_confirm_selected_doctor(
     keyboard: type[PatientKeyboard],
     blank: type[PatientBlank],
 ):
-    selected_doctor_id = await PatientService.get_number_from_callback_data(callback_query.data)
+    selected_doctor_id = await PatientService.get_value_from_callback_data(callback_query.data)
     
     doctor_dbm = await PatientService.get_selected_doctor(selected_doctor_id)
 
@@ -65,7 +65,7 @@ async def handle_select_doctor(
     blank: type[PatientBlank],
     user_dbm: type[UserDBM]
 ):
-    selected_doctor_id = await PatientService.get_number_from_callback_data(callback_query.data)
+    selected_doctor_id = await PatientService.get_value_from_callback_data(callback_query.data)
 
     if await PatientService.is_patient_has_connected(callback_query.from_user.id):
         await callback_query.answer(f"Вы уже закреплены к доктору!")

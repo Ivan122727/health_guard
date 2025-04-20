@@ -1,3 +1,4 @@
+from typing import Any
 import sqlalchemy
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
@@ -82,10 +83,16 @@ class PatientService:
 
 
     @staticmethod
-    async def get_number_from_callback_data(raw_data: str, num_position: int = 2) -> int:
+    async def get_value_from_callback_data(
+        callback_data: str, 
+        position_index: int = 2, 
+        default_value: int = 0,
+        sep: str = ":",
+        type: type = int
+    ) -> Any:
         try:
-            page = int(raw_data.split(":")[num_position - 1])
+            value = type(callback_data.split(sep=sep)[position_index - 1])
         except (IndexError, ValueError):
-            page = 0
+            value = default_value
         
-        return page
+        return value

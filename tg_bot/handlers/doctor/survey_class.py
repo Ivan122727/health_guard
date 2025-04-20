@@ -8,13 +8,14 @@ class Question:
     text: Optional[str] = None
     options: Optional[List[str]] = None
     is_active: bool = True
+    is_from_template: bool = False
+    template_question_id: Optional[int] = None
 
 class Survey:
     def __init__(self):
         self.questions: Dict[str, Question] = {}  # id: Question
         self.current_question_id: Optional[str] = None
-        self.count_active_questions = 0
-        self.title = "Без названия"
+        self.title = None
 
     def edith_survey_title(
             self,
@@ -25,13 +26,19 @@ class Survey:
     def add_question(
             self, 
             text: Optional[str] = None, 
-            options: Optional[List[str]] = None
+            options: Optional[List[str]] = None,
+            is_from_template: bool = False,
+            template_question_id: Optional[int] = None
         ) -> str:
         """Добавляет новый вопрос и делает его текущим"""
-        question = Question(text=text, options=options)
+        question = Question(
+            text=text, 
+            options=options,
+            is_from_template=is_from_template,
+            template_question_id=template_question_id,
+        )
         self.questions[question.id] = question
         self.current_question_id = question.id
-        self.count_active_questions += 1
         return question.id
     
     def get_current_question(self) -> Optional[Question]:
@@ -44,7 +51,9 @@ class Survey:
             self, 
             question_id: str, 
             new_text: Optional[str] = None, 
-            new_options: Optional[List[str]] = None
+            new_options: Optional[List[str]] = None,
+            is_from_template: Optional[bool] = None,
+            template_question_id: Optional[int] = None,
         ):
         """Редактирует существующий вопрос"""
         if question_id in self.questions:
@@ -53,21 +62,37 @@ class Survey:
                 question.text = new_text
             if new_options:
                 question.options = new_options
+            if is_from_template and template_question_id:
+                question.is_from_template = is_from_template
+                question.template_question_id = template_question_id
+
     
     def remove_question(self, question_id: str):
         """Удаляет вопрос, сохраняя порядок остальных"""
         if question_id in self.questions:
             # Деактивируем вместо полного удаления для сохранения порядка
             self.questions[question_id].is_active = False
-            self.count_active_questions -= 1
 
             # Если удаляем текущий вопрос, сбрасываем указатель
             if self.current_question_id == question_id:
-                self.current_question_id = None
+                try:
+                    self.current_question_id = self.get_active_questions()[-1].id
+                except IndexError:
+                    self.current_question_id = None
     
+    @staticmethod
+    def is_valid_question(q: Question) -> bool:
+        """Проверяет, соответствует ли вопрос критериям валидности"""
+        if not q.is_active:
+            return False
+        if q.is_from_template:
+            return q.template_question_id is not None
+        else:
+            return q.text is not None and q.options is not None
+
     def get_active_questions(self) -> List[Question]:
         """Возвращает список активных вопросов в порядке добавления"""
-        return [q for q in self.questions.values() if q.is_active]
+        return [q for q in self.questions.values() if Survey.is_valid_question(q)]
     
     def get_question_by_id(self, question_id: str) -> Optional[Question]:
         """Возвращает вопрос по ID"""
@@ -77,3 +102,8 @@ class Survey:
         """Устанавливает текущий вопрос"""
         if question_id in self.questions:
             self.current_question_id = question_id
+           
+
+    @property
+    def count_valid_questions(self) -> int:
+        return len(self.get_active_questions())
