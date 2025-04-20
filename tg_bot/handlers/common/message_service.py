@@ -3,7 +3,7 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
-
+from aiogram.exceptions import TelegramBadRequest
 
 class MessageService:
     """Класс для управления сообщениями бота с поддержкой FSM."""
@@ -51,7 +51,7 @@ class MessageService:
                     message_id=message_id,
                     reply_markup=reply_markup
                 )
-            except Exception:
+            except Exception as e:
                 pass
         if state:
             await state.set_state(new_state)
@@ -126,19 +126,20 @@ class MessageService:
             await state.update_data({previous_message_key: message.message_id})
             state_data = await state.get_data()
 
-        if state and state_data.get(previous_message_key):
-            message_id = state_data.get(previous_message_key)
-            
-            await MessageService.edith_previous_message(
-                bot=bot,
-                text=text,
-                user_id=user_id,
-                message_id=message_id,
-                reply_markup=reply_markup,
-                state=state,
-                new_state=new_state
-            )
-        else:
+        try:
+            if state and state_data.get(previous_message_key):
+                message_id = state_data.get(previous_message_key)
+                
+                await MessageService.edith_previous_message(
+                    bot=bot,
+                    text=text,
+                    user_id=user_id,
+                    message_id=message_id,
+                    reply_markup=reply_markup,
+                    state=state,
+                    new_state=new_state
+                )
+        except TelegramBadRequest as e:
             await MessageService.send_managed_message(
                 bot=bot,
                 user_id=user_id,

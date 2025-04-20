@@ -161,7 +161,7 @@ async def handle_choose_type_question(
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.CREATE_NEW_QUESTION.value))
-async def handle_confirm_new_survey_type(
+async def handle_choose_new_question_type(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -180,7 +180,7 @@ async def handle_confirm_new_survey_type(
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.CREATE_TEMPLATE_QUESTION.value))
-async def handle_confirm_template_survey_type(
+async def handle_choose_template_question_type(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -200,7 +200,7 @@ async def handle_confirm_template_survey_type(
 
 
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_CREATE_NEW_QUESTION.value))
-async def handle_confirm_new_survey_type(
+async def handle_confirm_new_question_type(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -222,7 +222,7 @@ async def handle_confirm_new_survey_type(
     )
 
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_CREATE_TEMPLATE_QUESTION.value))
-async def handle_confirm_template_survey_type(
+async def handle_confirm_template_question_type(
     callback_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -287,25 +287,36 @@ async def handle_add_new_question_options(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    answer_options = await DoctorService.parse_answer_options(
-        raw_options=message.text
-    )
-    await DoctorService.add_options_to_current_question(
-        state=state,
-        answer_options=answer_options
-    )
-    
     count_questions = await DoctorService.get_count_questions_in_survey(state=state)
+    
+    current_question = await DoctorService.get_current_question(state)
+
+    if await DoctorService.is_valid_answer_options(message.text):
+        answer_options = await DoctorService.parse_answer_options(
+            raw_options=message.text
+        )
+        await DoctorService.add_options_to_current_question(
+            state=state,
+            answer_options=answer_options
+        )
+        
+        count_questions = await DoctorService.get_count_questions_in_survey(state=state)
+
+        text=blank.get_create_from_scratch_blank(step=blank.STATE_QUESTION_TEXT, count_questions=count_questions)
+        new_state = CreateSurveyStates.waiting_new_question_text
+    else:
+        text=blank.get_create_from_scratch_blank(step=blank.STATE_QUESTION_OPTIONS, current_question=current_question.text)
+        new_state=CreateSurveyStates.waiting_new_question_options
 
     await MessageService.edith_managed_message(
         bot=message.bot,
         user_id=message.from_user.id,
-        text=blank.get_create_from_scratch_blank(step=blank.STATE_QUESTION_TEXT, count_questions=count_questions),
+        text=text,
         reply_markup=keyboard.get_question_management_keyboard(count_questions),
         state=state,
         previous_message_key="start_msg_id",
         message_id_storage_key="start_msg_id",
-        new_state=CreateSurveyStates.waiting_new_question_text
+        new_state=new_state
     )
     
     # Удаление сообщения пользователя
@@ -323,7 +334,12 @@ async def handle_add_template_question(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM]
 ):
-    template_question_id = int(message.text)
+    template_question_id = await DoctorService.get_value_from_callback_data(
+        message.text,
+        position_index=1,
+        default_value=-1,
+        type=int,
+    )
     
     is_success = await DoctorService.add_or_edit_template_question_to_survey(
         state=state,
@@ -348,7 +364,7 @@ async def handle_add_template_question(
         await MessageService.edith_managed_message(
             bot=message.bot,
             user_id=message.from_user.id,
-            text=blank.get_use_template_blank() + "\nnigger",
+            text=blank.get_use_template_blank(is_error=True),
             reply_markup=keyboard.get_question_management_keyboard(count_questions),
             state=state,
             previous_message_key="start_msg_id",
