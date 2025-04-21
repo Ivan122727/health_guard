@@ -1,5 +1,5 @@
 from typing import Optional
-from shared.sqlalchemy_db_.sqlalchemy_model import SurveyDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import SurveyDBM, UserDBM
 from tg_bot.blanks import CommonBlank
 from tg_bot.handlers.doctor.survey_models import Question
 
@@ -536,4 +536,27 @@ class DoctorBlank(CommonBlank):
             "2. Подтвердите выбор пациента\n"
             "3. Укажите дату и время прохождения\n\n"
             "👇 <b>Используйте кнопки ниже для выбора</b>"
+        )
+    
+    @staticmethod
+    def get_patient_confirmation_template(
+        survey_dbm: SurveyDBM,
+        patient_dbm: UserDBM,
+        doctor_id: int
+    ) -> str:
+        """Бланк подтверждения выбранного пациента
+        
+        Args:
+            survey_dbm: Объект опроса (SurveyDBM)
+            patient_dbm: Объект пациента (UserDBM)
+            doctor_id: ID врача в системе
+        """
+        return (
+            "✅ <b>Подтверждение выбора пациента</b>\n\n"
+            f"📋 <b>Опрос:</b> {survey_dbm.title} (ID: {survey_dbm.id})\n"
+            f"👤 <b>Пациент:</b> {patient_dbm.full_name}\n"
+            f"🆔 <b>Telegram ID:</b> <code>{patient_dbm.tg_id}</code>\n"
+            f"👨⚕️ <b>Ваш ID:</b> <code>{doctor_id}</code>\n\n"
+            "ℹ️ <i>Проверьте данные пациента перед подтверждением</i>\n\n"
+            "👇 <b>Подтвердите выбор или измените решение</b>"
         )

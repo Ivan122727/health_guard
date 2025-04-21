@@ -764,9 +764,49 @@ async def show_selected_survey(
     )
 
 
+async def proccess_handle_patient_selection(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True,
+    page: int = 0
+):
+    message_from_cq = message if from_cq else None
+
+    survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
+    patient_dbms = await ScheduleSurveyService.get_connected_patients(user_dbm.tg_id)
+
+    await MessageService.edith_managed_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            text=blank.get_patient_selection_template(
+                survey_dbm=survey_dbm,
+                user_id=user_dbm.tg_id,
+                has_patients=len(patient_dbms),
+            ),
+            reply_markup=keyboard.get_patient_selection_keyboard(
+                patients_dbms=patient_dbms,
+                page=page,
+            ),
+            state=state,
+            previous_message_key="start_msg_id",
+            message_id_storage_key="start_msg_id",
+            new_state=ScheduleSurveyStates.waiting_select_patient,
+            message=message_from_cq,
+    )
+
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )  
+
 
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_SURVEY_SELECTION.value))
-async def confirm_selected_survey(
+async def handle_patient_selection_cq(
     call_back_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
@@ -782,142 +822,117 @@ async def confirm_selected_survey(
         state=state,
         page=current_page,
     )
+
+    await proccess_handle_patient_selection(
+        message=call_back_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        page=current_page,
+    )
+
+@router.message(ScheduleSurveyStates.waiting_select_patient)
+async def handle_patient_selection(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
     current_page = await ScheduleSurveyService.get_select_patient_current_page(state)
 
+    await proccess_handle_patient_selection(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        page=current_page,
+        from_cq=False,
+    )
+
+
+async def proccess_show_selected_patient(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True,
+):
+    message_from_cq = message if from_cq else None
+
     survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
-    patient_dbms = await ScheduleSurveyService.get_connected_patients(user_dbm.tg_id)
+    patient_dbm = await ScheduleSurveyService.get_selected_patient(state)
 
     await MessageService.edith_managed_message(
-            bot=call_back_query.bot,
+            bot=message.bot,
             user_id=user_dbm.tg_id,
-            text=blank.get_patient_selection_template(
+            text=blank.get_patient_confirmation_template(
                 survey_dbm=survey_dbm,
-                user_id=user_dbm.tg_id,
-                has_patients=len(patient_dbms),
+                patient_dbm=patient_dbm,
+                doctor_id=user_dbm.tg_id,
             ),
-            reply_markup=keyboard.get_patient_selection_keyboard(
-                patients_dbms=patient_dbms,
-                page=current_page,
+            reply_markup=keyboard.get_patient_confirmation_keyboard(
+                patient_dbm=patient_dbm,
             ),
             state=state,
             previous_message_key="start_msg_id",
             message_id_storage_key="start_msg_id",
-            new_state=ScheduleSurveyStates.waiting_select_patient,
-            message=call_back_query.message,
+            new_state=ScheduleSurveyStates.waiting_confirm_selected_patient,
+            message=message_from_cq,
     )
 
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )  
 
 
+@router.callback_query(F.data.startswith(DoctorAction.SELECT_PATIENT.value))
+async def show_selected_patient_cq(
+    call_back_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    patient_id = await MessageService.get_value_from_callback_data(
+        callback_data=call_back_query.data,
+        default_value=None,
+    )
+    await ScheduleSurveyService.save_selected_patient(
+        state=state,
+        patient_id=patient_id,
+    )
 
+    await proccess_show_selected_patient(
+        message=call_back_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+    )
 
+@router.message(ScheduleSurveyStates.waiting_confirm_selected_patient)
+async def show_selected_patient(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    current_page = await ScheduleSurveyService.get_select_patient_current_page(state)
 
-
-
-
-
-
-
-
-# @router.message(ScheduleSurveyStates.waiting_select_patient)
-# async def show_selected_patient(
-#     message: Message,
-#     state: FSMContext,
-#     keyboard: type[DoctorKeyboard],
-#     blank: type[DoctorBlank],
-#     user_dbm: type[UserDBM],
-# ):
-#     survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
-
-#     await proccess_confirm_selected_survey(
-#         message=message,
-#         state=state,
-#         keyboard=keyboard,
-#         blank=blank,
-#         user_dbm=user_dbm,
-#         survey_dbm=survey_dbm,
-#     )
-
-
-# async def proccess_handle_patient_selection(
-#     message: Message,
-#     state: FSMContext,
-#     keyboard: type[DoctorKeyboard],
-#     blank: type[DoctorBlank],
-#     user_dbm: type[UserDBM],
-#     from_cq: bool = False,
-#     page: int = 0
-# ):
-#     message_from_cq = message if from_cq else None
-
-#     survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
-
-#     patient_dbms = await ScheduleSurveyService.get_connected_patients(user_dbm.tg_id)
-    
-#     await MessageService.edith_managed_message(
-#             bot=message.bot,
-#             user_id=user_dbm.tg_id,
-#             text=blank.get_patient_selection_template(survey_dbm=survey_dbm),
-#             reply_markup=keyboard.get_patient_selection_keyboard(
-#                 patients_dbms=patient_dbms,
-#                 page=page,
-#             ),
-#             state=state,
-#             previous_message_key="start_msg_id",
-#             message_id_storage_key="start_msg_id",
-#             new_state=ScheduleSurveyStates.waiting_select_patient,
-#             message=message_from_cq,
-#     )
-
-#     if not from_cq:
-#         await MessageService.remove_previous_message(
-#             bot=message.bot,
-#             user_id=user_dbm.tg_id,
-#             message_id=message.message_id,
-#         )
-
-# @router.callback_query(F.data.startswith(DoctorAction.SELECT_PATIENT.value))
-# async def handle_patient_selection_cq(
-#     call_back_query: CallbackQuery,
-#     state: FSMContext,
-#     keyboard: type[DoctorKeyboard],
-#     blank: type[DoctorBlank],
-#     user_dbm: type[UserDBM],
-# ):
-#     current_page = await MessageService.get_value_from_callback_data(
-#         callback_data=call_back_query.data,
-#         default_value=0,
-#     )
-
-#     await ScheduleSurveyService.save_select_patient_current_page(
-#         state=state,
-#         page=current_page,
-#     )
-
-#     await proccess_handle_patient_selection(
-#         message=call_back_query.message,
-#         state=state,
-#         keyboard=keyboard,
-#         blank=blank,
-#         user_dbm=user_dbm,
-#         from_cq=True,
-#         page=current_page,
-#     )
-
-# @router.message(ScheduleSurveyStates.waiting_select_patient)
-# async def handle_patient_selection(
-#     message: Message,
-#     state: FSMContext,
-#     keyboard: type[DoctorKeyboard],
-#     blank: type[DoctorBlank],
-#     user_dbm: type[UserDBM],
-# ):
-#     current_page = await ScheduleSurveyService.get_select_patient_current_page(state)
-
-#     await proccess_handle_patient_selection(
-#         message=message,
-#         state=state,
-#         keyboard=keyboard,
-#         blank=blank,
-#         user_dbm=user_dbm,
-#         page=current_page,
-#     )
+    await proccess_handle_patient_selection(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        page=current_page,
+        from_cq=False,
+    )

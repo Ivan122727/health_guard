@@ -250,11 +250,11 @@ class ScheduleSurveyService:
                 sqlalchemy
                 .select(UserDBM)
                 .where(UserDBM.role == UserDBM.Roles.patient)
-                .join(DoctorPatientDBM, sqlalchemy.and_(
-                    DoctorPatientDBM.doctor_id == user_id,
-                    DoctorPatientDBM.patient_id == UserDBM.tg_id
-                    )
-                )
+                # .join(DoctorPatientDBM, sqlalchemy.and_(
+                #     DoctorPatientDBM.doctor_id == user_id,
+                #     DoctorPatientDBM.patient_id == UserDBM.tg_id
+                #     )
+                # )
                 .order_by(UserDBM.id)
             )).scalars().unique().all()
         
@@ -284,3 +284,36 @@ class ScheduleSurveyService:
             return current_page
         
         return None 
+
+
+    @staticmethod
+    async def save_selected_patient(
+        state: FSMContext,
+        patient_id: int
+    ) -> None:
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            patient_dbm = (await session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.tg_id == patient_id)
+            )).scalar_one_or_none()
+
+        await MessageService.set_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_PATIENT,
+            value=patient_dbm,
+        )
+
+    @staticmethod
+    async def get_selected_patient(
+        state: FSMContext,
+    ) -> Optional[UserDBM]:
+        patient_dbm = await MessageService.get_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_PATIENT,
+        )
+        
+        if patient_dbm is not None:
+            return patient_dbm
+        
+        return None

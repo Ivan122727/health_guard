@@ -25,3 +25,4 @@ class ScheduleSurveyStates(StatesGroup):
     waiting_select_survey = State()
     waiting_confirm_selected_survey = State()
     waiting_select_patient = State()
+    waiting_confirm_selected_patient = State()

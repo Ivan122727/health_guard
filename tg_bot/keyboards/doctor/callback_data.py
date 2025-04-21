@@ -36,3 +36,4 @@ class DoctorAction(str, Enum):
     SELECT_SURVEY = "select_survey"
     CONFIRM_SURVEY_SELECTION = "confirm_survey_selection"
     SELECT_PATIENT = "select_patient"
+    CONFIRM_SELECTED_PATIENT = "confirm_selected_patient"

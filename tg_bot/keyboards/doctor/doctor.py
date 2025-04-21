@@ -466,7 +466,7 @@ class DoctorKeyboard(CommonKeyboard):
         for patient_dbm in patients_dbms[page * per_page : page * per_page + per_page]:
             keyboard.button(
                 text=f"👤 {patient_dbm.full_name}",
-                callback_data=f"{DoctorAction.SELECT_PATIENT.value}:{patient_dbm.id}"
+                callback_data=f"{DoctorAction.SELECT_PATIENT.value}:{patient_dbm.tg_id}"
             )
         
         # Кнопки пагинации
@@ -513,4 +513,45 @@ class DoctorKeyboard(CommonKeyboard):
             # Нет кнопок пагинации
             keyboard.adjust(*[1]*per_page, 2)  # Пациенты по 1, управление 2 в ряд
         
+        return keyboard.as_markup()
+
+
+    @staticmethod
+    def get_patient_confirmation_keyboard(
+        patient_dbm: UserDBM,
+    ) -> InlineKeyboardMarkup:
+        """Клавиатура подтверждения выбора пациента
+        
+        Args:
+            patient_dbm: Объект пациента (UserDBM)
+            survey_id: ID выбранного опроса
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Основные кнопки подтверждения
+        keyboard.button(
+            text="✅ Подтвердить выбор",
+            callback_data=DoctorAction.CONFIRM_SELECTED_PATIENT
+        )
+        keyboard.button(
+            text="🔄 Выбрать другого пациента",
+            callback_data=DoctorAction.SELECT_PATIENT
+        )
+        keyboard.button(
+            text="📋 Выбрать другой опрос",
+            callback_data=DoctorAction.CONFIRM_DATE_PERIOD
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        # Дополнительные кнопки
+        keyboard.button(
+            text="📞 Связаться с пациентом",
+            url=f"tg://user?id={patient_dbm.tg_id}"
+        )
+        
+        # Расположение кнопок (2 в ряд для основных, 1 для дополнительных)
+        keyboard.adjust(2, 2, 1)
         return keyboard.as_markup()
