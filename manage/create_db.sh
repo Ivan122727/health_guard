@@ -1,5 +1,5 @@
 #!/bin/bash
-
+cd ..
 # Загрузка переменных из database_settings.env файла
 if [ -f database_settings.env ]; then
     export $(cat database_settings.env | xargs)
