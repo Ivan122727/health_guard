@@ -866,23 +866,43 @@ async def proccess_show_selected_patient(
     survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
     patient_dbm = await ScheduleSurveyService.get_selected_patient(state)
 
-    await MessageService.edith_managed_message(
-            bot=message.bot,
-            user_id=user_dbm.tg_id,
-            text=blank.get_patient_confirmation_template(
-                survey_dbm=survey_dbm,
-                patient_dbm=patient_dbm,
-                doctor_id=user_dbm.tg_id,
-            ),
-            reply_markup=keyboard.get_patient_confirmation_keyboard(
-                patient_dbm=patient_dbm,
-            ),
-            state=state,
-            previous_message_key="start_msg_id",
-            message_id_storage_key="start_msg_id",
-            new_state=ScheduleSurveyStates.waiting_confirm_selected_patient,
-            message=message_from_cq,
-    )
+    try:
+        await MessageService.edith_managed_message(
+                bot=message.bot,
+                user_id=user_dbm.tg_id,
+                text=blank.get_patient_confirmation_template(
+                    survey_dbm=survey_dbm,
+                    patient_dbm=patient_dbm,
+                    doctor_id=user_dbm.tg_id,
+                ),
+                reply_markup=keyboard.get_patient_confirmation_keyboard(
+                    patient_dbm=patient_dbm,
+                ),
+                state=state,
+                previous_message_key="start_msg_id",
+                message_id_storage_key="start_msg_id",
+                new_state=ScheduleSurveyStates.waiting_confirm_selected_patient,
+                message=message_from_cq,
+        )
+    except:
+        await MessageService.edith_managed_message(
+                bot=message.bot,
+                user_id=user_dbm.tg_id,
+                text=blank.get_patient_confirmation_template(
+                    survey_dbm=survey_dbm,
+                    patient_dbm=patient_dbm,
+                    doctor_id=user_dbm.tg_id,
+                ),
+                reply_markup=keyboard.get_patient_confirmation_keyboard(
+                    patient_dbm=patient_dbm,
+                    add_contact_button=False,
+                ),
+                state=state,
+                previous_message_key="start_msg_id",
+                message_id_storage_key="start_msg_id",
+                new_state=ScheduleSurveyStates.waiting_confirm_selected_patient,
+                message=message_from_cq,
+        )
 
     if not from_cq:
         await MessageService.remove_previous_message(
@@ -935,4 +955,21 @@ async def show_selected_patient(
         user_dbm=user_dbm,
         page=current_page,
         from_cq=False,
+    )
+
+
+@router.callback_query(F.data.startswith(DoctorAction.CONFIRM_SELECTED_PATIENT.value))
+async def confirm_selected_patient_cq(
+    call_back_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    await proccess_show_selected_patient(
+        message=call_back_query.message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
     )

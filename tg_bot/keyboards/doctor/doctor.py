@@ -519,6 +519,7 @@ class DoctorKeyboard(CommonKeyboard):
     @staticmethod
     def get_patient_confirmation_keyboard(
         patient_dbm: UserDBM,
+        add_contact_button: bool = True
     ) -> InlineKeyboardMarkup:
         """Клавиатура подтверждения выбора пациента
         
@@ -535,7 +536,7 @@ class DoctorKeyboard(CommonKeyboard):
         )
         keyboard.button(
             text="🔄 Выбрать другого пациента",
-            callback_data=DoctorAction.SELECT_PATIENT
+            callback_data=DoctorAction.CONFIRM_SURVEY_SELECTION,
         )
         keyboard.button(
             text="📋 Выбрать другой опрос",
@@ -545,13 +546,12 @@ class DoctorKeyboard(CommonKeyboard):
             text="❌ Отменить планирование",
             callback_data=DoctorAction.CANCEL_SCHEDULING
         )
-        
-        # Дополнительные кнопки
-        keyboard.button(
-            text="📞 Связаться с пациентом",
-            url=f"tg://user?id={patient_dbm.tg_id}"
-        )
-        
+        if add_contact_button:
+            # Дополнительные кнопки
+            keyboard.button(
+                text="📞 Связаться с пациентом",
+                url=f"tg://user?id={patient_dbm.tg_id}"
+            )
         # Расположение кнопок (2 в ряд для основных, 1 для дополнительных)
         keyboard.adjust(2, 2, 1)
         return keyboard.as_markup()

@@ -41,18 +41,12 @@ class ScheduleSurveyService:
     async def clear_schedule_data(
         state: FSMContext,
     ):
-        await MessageService.set_state_data(
-            state=state,
-            key=ScheduledSurvey._STATE_KEY_SURVEY_DATA,
-            value=None,
-        )
-
-        await MessageService.set_state_data(
-            state=state,
-            key=ScheduledSurvey._STATE_KEY_SELECT_SURVEY_CURRENT_PAGE,
-            value=None,
-        )
-
+        for STATE_KEY in ScheduledSurvey._STATE_KEYS:
+            await MessageService.set_state_data(
+                state=state,
+                key=STATE_KEY,
+                value=None,
+            )
 
     @staticmethod
     async def save_frequency_type_survey(
