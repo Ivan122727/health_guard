@@ -2,7 +2,7 @@ from typing import Optional
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from shared.sqlalchemy_db_.sqlalchemy_model.survey import SurveyDBM
+from shared.sqlalchemy_db_.sqlalchemy_model.survey import SurveyDBM, UserDBM
 from tg_bot.handlers.doctor.survey_models import Question
 from tg_bot.keyboards.common.common import CommonKeyboard
 from tg_bot.keyboards.doctor.callback_data import DoctorAction
@@ -417,5 +417,100 @@ class DoctorKeyboard(CommonKeyboard):
             keyboard.adjust(*[1]*per_page, 2, 1)  # Опросы по 1, пагинация 2 в ряд, назад внизу
         else:
             keyboard.adjust(*[1]*(per_page + len(pagination_buttons) + 1))  # Все по 1 в ряд
+        
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_survey_confirmation_keyboard(survey_id: int) -> InlineKeyboardMarkup:
+        """Клавиатура подтверждения выбранного опроса для планирования
+        
+        Args:
+            survey_id: ID выбранного опроса
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Основные кнопки
+        keyboard.button(
+            text="✅ Подтвердить выбор",
+            callback_data=DoctorAction.CONFIRM_SURVEY_SELECTION.value
+        )
+        keyboard.button(
+            text="🔄 Выбрать другой опрос",
+            callback_data=DoctorAction.CONFIRM_DATE_PERIOD
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        # Расположение кнопок (все в один столбец)
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    @staticmethod
+    def get_patient_selection_keyboard(
+        patients_dbms: list[UserDBM],
+        page: int = 0,
+        per_page: int = 5
+    ) -> InlineKeyboardMarkup:
+        """Клавиатура выбора пациента с пагинацией
+        
+        Args:
+            patients_dbms: Список пациентов
+            page: Текущая страница (начиная с 0)
+            per_page: Количество пациентов на странице
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Добавляем кнопки пациентов (каждая в отдельную строку)
+        for patient_dbm in patients_dbms[page * per_page : page * per_page + per_page]:
+            keyboard.button(
+                text=f"👤 {patient_dbm.full_name}",
+                callback_data=f"{DoctorAction.SELECT_PATIENT.value}:{patient_dbm.id}"
+            )
+        
+        # Кнопки пагинации
+        pagination_buttons = []
+        if (page * per_page - per_page) >= 0:
+            pagination_buttons.append((
+                "⬅️ Назад",
+                f"{DoctorAction.CONFIRM_SURVEY_SELECTION.value}:{page - 1}"
+            ))
+            
+        if (page * per_page + per_page) < len(patients_dbms):
+            pagination_buttons.append((
+                "Вперёд ➡️",
+                f"{DoctorAction.CONFIRM_SURVEY_SELECTION.value}:{page + 1}"
+            ))
+        
+        # Управляющие кнопки
+        keyboard.button(
+            text="🔄 Выбрать другой опрос",
+            callback_data=DoctorAction.CONFIRM_DATE_PERIOD
+        )
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+        
+        # Оптимальное расположение кнопок:
+        # 1. Все пациенты по одному в строке (adjust(1) для каждого)
+        # 2. Пагинация в одну строку (если есть обе кнопки)
+        # 3. Управляющие кнопки в одну строку
+        
+        # Добавляем пагинацию
+        for text, callback_data in pagination_buttons:
+            keyboard.button(text=text, callback_data=callback_data)
+        
+        # Настройка расположения:
+        if len(pagination_buttons) == 2:
+            # Если есть обе кнопки пагинации
+            keyboard.adjust(*[1]*per_page, 2, 2)  # Пациенты по 1, пагинация 2 в ряд, управление 2 в ряд
+        elif len(pagination_buttons) == 1:
+            # Если только одна кнопка пагинации
+            keyboard.adjust(*[1]*per_page, 1, 2)  # Пациенты по 1, пагинация 1, управление 2 в ряд
+        else:
+            # Нет кнопок пагинации
+            keyboard.adjust(*[1]*per_page, 2)  # Пациенты по 1, управление 2 в ряд
         
         return keyboard.as_markup()

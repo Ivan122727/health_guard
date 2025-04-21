@@ -132,7 +132,10 @@ class Survey:
 
 class ScheduledSurvey:
     _STATE_KEY_SURVEY_DATA = "schedule_survey"
-    _STATE_KEY_CURRENT_SELECT_SURVEY_PAGE = "current_select_survey_page"
+    _STATE_KEY_SELECT_SURVEY_CURRENT_PAGE = "select_survey_current_page"
+    _STATE_KEY_CURRENT_SELECTED_SURVEY = "current_selected_survey"
+    _STATE_KEY_SELECT_PATIENT_CURRENT_PAGE = "select_patient_current_page"
+
     def __init__(self):
         self.survey = Survey()
 

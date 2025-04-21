@@ -23,3 +23,5 @@ class ScheduleSurveyStates(StatesGroup):
     # Ввод периода
     waiting_survey_period = State()
     waiting_select_survey = State()
+    waiting_confirm_selected_survey = State()
+    waiting_select_patient = State()

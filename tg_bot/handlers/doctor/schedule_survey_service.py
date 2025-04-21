@@ -6,7 +6,7 @@ from datetime import date, time
 from typing import Tuple
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, QuestionDBM, SurveyDBM, SurveyQuestionDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, DoctorPatientDBM
 from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.handlers.doctor.survey_models import Question, ScheduledSurvey
 from tg_bot.utils.time_validator import TimeValidator
@@ -49,7 +49,7 @@ class ScheduleSurveyService:
 
         await MessageService.set_state_data(
             state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+            key=ScheduledSurvey._STATE_KEY_SELECT_SURVEY_CURRENT_PAGE,
             value=None,
         )
 
@@ -182,26 +182,105 @@ class ScheduleSurveyService:
         return survey_dbms
 
     @staticmethod
-    async def save_current_select_page(
+    async def save_select_survey_current_page(
         state: FSMContext,
         page: int
     ) -> None:
         await MessageService.set_state_data(
             state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+            key=ScheduledSurvey._STATE_KEY_SELECT_SURVEY_CURRENT_PAGE,
             value=page,
         )
     
     @staticmethod
-    async def get_select_current_page(
+    async def get_select_survey_current_page(
         state: FSMContext,
     ) -> Optional[int]:
         current_page = await MessageService.get_state_data(
             state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECT_SURVEY_PAGE,
+            key=ScheduledSurvey._STATE_KEY_SELECT_SURVEY_CURRENT_PAGE,
         )
         
-        if current_page:
+        if current_page is not None:
+            return current_page
+        
+        return None 
+
+    @staticmethod
+    async def save_current_selected_survey(
+        state: FSMContext,
+        survey_id: int,
+        user_id: int,
+    ) -> None:
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            survey_dbm = (await session.execute(
+                sqlalchemy
+                .select(SurveyDBM)
+                .where(SurveyDBM.id == survey_id)
+                .where(SurveyDBM.created_by == user_id)
+            )).scalar_one_or_none()
+        
+        if survey_dbm:
+            await MessageService.set_state_data(
+                state=state,
+                key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_SURVEY,
+                value=survey_dbm,
+            )
+    
+    @staticmethod
+    async def get_current_selected_survey(
+        state: FSMContext,
+    ) -> Optional[SurveyDBM]:
+        survey_dbm = await MessageService.get_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_SURVEY,
+        )
+        
+        if survey_dbm:
+            return survey_dbm
+        
+        return None 
+    
+    @staticmethod
+    async def get_connected_patients(
+        user_id: int,
+    ) -> list[UserDBM]:
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            patient_dbms = (await session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.role == UserDBM.Roles.patient)
+                .join(DoctorPatientDBM, sqlalchemy.and_(
+                    DoctorPatientDBM.doctor_id == user_id,
+                    DoctorPatientDBM.patient_id == UserDBM.tg_id
+                    )
+                )
+                .order_by(UserDBM.id)
+            )).scalars().unique().all()
+        
+        return patient_dbms
+    
+    @staticmethod
+    async def save_select_patient_current_page(
+        state: FSMContext,
+        page: int
+    ) -> None:
+        await MessageService.set_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_SELECT_PATIENT_CURRENT_PAGE,
+            value=page,
+        )
+
+    @staticmethod
+    async def get_select_patient_current_page(
+        state: FSMContext,
+    ) -> Optional[int]:
+        current_page = await MessageService.get_state_data(
+            state=state,
+            key=ScheduledSurvey._STATE_KEY_SELECT_PATIENT_CURRENT_PAGE,
+        )
+        
+        if current_page is not None:
             return current_page
         
         return None 
