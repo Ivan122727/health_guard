@@ -13,28 +13,26 @@ from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM
 
 async def main():
-    # get_cached_sqlalchemy_db().reinit()
-
-    # async with get_cached_sqlalchemy_db().new_async_session() as async_session:
-    #     for i in range(20):
-    #         doctor_dbm = UserDBM(
-    #             tg_id=12311212+i,
-    #             full_name=f"Пациентов Пациент {i}",
-    #             role=UserDBM.Roles.patient
-    #         )
-    #         async_session.add(doctor_dbm)
-    #         await async_session.commit()
-
-    get_cached_sqlalchemy_db().init()
+    get_cached_sqlalchemy_db().reinit()
 
     async with get_cached_sqlalchemy_db().new_async_session() as async_session:
-        for i in range(20):
-            doctor_dbm = SurveyDBM(
-                created_by=457643251,
-                title=f"Пустой опрос {i}",
-            )
-            async_session.add(doctor_dbm)
-            await async_session.commit()
+
+        doctor_dbm = UserDBM(
+            tg_id=380138374,
+            role=UserDBM.Roles.doctor,
+            full_name="Шакирзянов  Айдар  Анварович"
+        )
+        async_session.add(doctor_dbm)
+        await async_session.commit()
+
+        doctor_dbm = UserDBM(
+            tg_id=457643251,
+            role=UserDBM.Roles.doctor,
+            full_name="Ермолов  Иван  Олегович"
+        )
+        async_session.add(doctor_dbm)
+        await async_session.commit()
+
 
 if __name__ == "__main__":
     import asyncio
