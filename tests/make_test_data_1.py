@@ -12,7 +12,7 @@ import sys
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM
 
-async def main():
+async def make_test_data():
     get_cached_sqlalchemy_db().reinit()
 
     async with get_cached_sqlalchemy_db().new_async_session() as async_session:
@@ -36,4 +36,4 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(main())
+    asyncio.run(make_test_data())
