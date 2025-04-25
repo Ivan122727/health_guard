@@ -2,12 +2,12 @@ import os
 from pathlib import Path
 import sys
 
-# Получаем путь к родительской директории
-parent_dir = Path(__file__).parent.parent
-# Добавляем родительскую директорию в PYTHONPATH
-sys.path.append(str(parent_dir))
-# Устанавливаем текущую рабочую директорию
-os.chdir(parent_dir)
+# # Получаем путь к родительской директории
+# parent_dir = Path(__file__).parent.parent
+# # Добавляем родительскую директорию в PYTHONPATH
+# sys.path.append(str(parent_dir))
+# # Устанавливаем текущую рабочую директорию
+# os.chdir(parent_dir)
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM
