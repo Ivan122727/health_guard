@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from uuid import uuid4
 
-from shared.sqlalchemy_db_.sqlalchemy_model import ScheduledSurveyDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import ScheduledSurveyDBM, SurveyDBM, UserDBM
 
 @dataclass
 class Question:
@@ -118,9 +118,9 @@ class CreatedSurvey:
 
 @dataclass
 class Survey:
-    survey_id: Optional[int] = None
-    patient_id: Optional[int] = None
-    doctor_id: Optional[int] = None
+    survey_dbm: Optional[SurveyDBM] = None
+    patient_dbm: Optional[UserDBM] = None
+    doctor_dbm: Optional[UserDBM] = None
     frequency_type: Optional[str] = None 
     times_per_day: Optional[int] = None
     interval_days: Optional[int] = None
@@ -133,15 +133,11 @@ class Survey:
 class ScheduledSurvey:
     _STATE_KEY_SURVEY_DATA = "schedule_survey"
     _STATE_KEY_SELECT_SURVEY_CURRENT_PAGE = "select_survey_current_page"
-    _STATE_KEY_CURRENT_SELECTED_SURVEY = "current_selected_survey"
     _STATE_KEY_SELECT_PATIENT_CURRENT_PAGE = "select_patient_current_page"
-    _STATE_KEY_CURRENT_SELECTED_PATIENT = "current_selected_patient"
     _STATE_KEYS = [
         _STATE_KEY_SURVEY_DATA,
         _STATE_KEY_SELECT_SURVEY_CURRENT_PAGE,
-        _STATE_KEY_CURRENT_SELECTED_SURVEY,
         _STATE_KEY_SELECT_PATIENT_CURRENT_PAGE,
-        _STATE_KEY_CURRENT_SELECTED_PATIENT
     ]
 
     def __init__(self):
@@ -165,3 +161,18 @@ class ScheduledSurvey:
     def save_survey_period(self, start_date: date, end_date: date) -> None:
         self.survey.start_date = start_date
         self.survey.end_date = end_date
+
+    def save_selected_survey(self, survey_dbm: SurveyDBM):
+        self.survey.survey_dbm = survey_dbm
+
+    def get_selected_survey(self):
+        return self.survey.survey_dbm
+    
+    def save_selected_patient(self, user_dbm: UserDBM):
+        self.survey.patient_dbm = user_dbm
+
+    def get_selected_patient(self):
+        return self.survey.patient_dbm
+
+    def get_survey(self):
+        return self.survey

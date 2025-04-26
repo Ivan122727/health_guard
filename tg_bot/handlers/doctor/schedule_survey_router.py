@@ -44,6 +44,10 @@ async def proccess_hadle_shoose_type_survey(
     user_dbm: type[UserDBM],
     from_cq: bool = True
 ):
+    await ScheduleSurveyService.clear_schedule_data(
+        state=state,
+    )
+    
     message_from_cq = message if from_cq else None
 
     await MessageService.edith_managed_message(
@@ -725,13 +729,13 @@ async def show_selected_survey_cq(
         default_value=0,
     )
 
-    await ScheduleSurveyService.save_current_selected_survey(
+    await ScheduleSurveyService.save_selected_survey(
         state=state,
         survey_id=survey_id,
         user_id=user_dbm.tg_id,
     )
 
-    survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
+    survey_dbm = await ScheduleSurveyService.get_selected_survey(state)
 
     await proccess_confirm_selected_survey(
         message=call_back_query.message,
@@ -752,7 +756,7 @@ async def show_selected_survey(
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM],
 ):
-    survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
+    survey_dbm = await ScheduleSurveyService.get_selected_survey(state)
 
     await proccess_confirm_selected_survey(
         message=message,
@@ -775,7 +779,7 @@ async def proccess_handle_patient_selection(
 ):
     message_from_cq = message if from_cq else None
 
-    survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
+    survey_dbm = await ScheduleSurveyService.get_selected_survey(state)
     patient_dbms = await ScheduleSurveyService.get_connected_patients(user_dbm.tg_id)
 
     await MessageService.edith_managed_message(
@@ -863,7 +867,7 @@ async def proccess_show_selected_patient(
 ):
     message_from_cq = message if from_cq else None
 
-    survey_dbm = await ScheduleSurveyService.get_current_selected_survey(state)
+    survey_dbm = await ScheduleSurveyService.get_selected_survey(state)
     patient_dbm = await ScheduleSurveyService.get_selected_patient(state)
 
     try:
@@ -958,18 +962,94 @@ async def show_selected_patient(
     )
 
 
+
+async def proccess_show_schedule_survey(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True,
+):
+    message_from_cq = message if from_cq else None
+    
+    survey = await ScheduleSurveyService.get_survey(state)
+    patient_dbm = await ScheduleSurveyService.get_selected_patient(state)
+
+    await MessageService.edith_managed_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            text=blank.get_survey_planning_confirmation_blank(survey=survey),
+            reply_markup=keyboard.get_schedule_survey_confirmation_keyboard(),
+            state=state,
+            previous_message_key="start_msg_id",
+            message_id_storage_key="start_msg_id",
+            new_state=ScheduleSurveyStates.waiting_confirm_schedule_survey,
+            message=message_from_cq,
+    )
+
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )  
+
 @router.callback_query(F.data.startswith(DoctorAction.CONFIRM_SELECTED_PATIENT.value))
-async def confirm_selected_patient_cq(
+async def show_schedule_survey_cq(
     call_back_query: CallbackQuery,
     state: FSMContext,
     keyboard: type[DoctorKeyboard],
     blank: type[DoctorBlank],
     user_dbm: type[UserDBM],
 ):
-    await proccess_show_selected_patient(
+    await proccess_show_schedule_survey(
         message=call_back_query.message,
         state=state,
         keyboard=keyboard,
         blank=blank,
         user_dbm=user_dbm,
+    )
+
+@router.message(ScheduleSurveyStates.waiting_confirm_schedule_survey)
+async def show_schedule_survey(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    await proccess_show_schedule_survey(
+        message=message,
+        state=state,
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False,
+    )
+
+@router.callback_query(F.data.startswith(DoctorAction.CONFIRM_SCHEDULE_SURVEY.value))
+async def confirm_schedule_survey_cq(
+    callback_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM],
+):
+    await callback_query.answer("Опрос успешно был запланирован!")
+
+    await ScheduleSurveyService.clear_schedule_data(
+        state=state,
+    )
+
+    await MessageService.edith_managed_message(
+        bot=callback_query.bot,
+        user_id=user_dbm.tg_id,
+        text=blank.get_default_blank(user_dbm.full_name),
+        reply_markup=keyboard.get_default_keyboard(),
+        state=state,
+        previous_message_key="start_msg_id",
+        message_id_storage_key="start_msg_id",
+        message=callback_query.message,
+        new_state=None
     )

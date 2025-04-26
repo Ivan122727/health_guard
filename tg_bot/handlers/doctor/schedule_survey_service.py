@@ -15,7 +15,7 @@ from tg_bot.utils.data_validator import DateValidator
 class ScheduleSurveyService:
     @staticmethod
     async def _get_or_create_survey(
-        state: FSMContext
+        state: FSMContext,
     ) -> ScheduledSurvey:
         survey: ScheduledSurvey = await MessageService.get_state_data(
             state=state, key=ScheduledSurvey._STATE_KEY_SURVEY_DATA,
@@ -36,6 +36,14 @@ class ScheduleSurveyService:
             key=ScheduledSurvey._STATE_KEY_SURVEY_DATA,
             value=survey,
         )
+
+    @staticmethod
+    async def get_survey(
+        state: FSMContext
+    ):
+        survey = await ScheduleSurveyService._get_or_create_survey(state)
+
+        return survey.get_survey()
 
     @staticmethod
     async def clear_schedule_data(
@@ -201,7 +209,7 @@ class ScheduleSurveyService:
         return None 
 
     @staticmethod
-    async def save_current_selected_survey(
+    async def save_selected_survey(
         state: FSMContext,
         survey_id: int,
         user_id: int,
@@ -215,25 +223,19 @@ class ScheduleSurveyService:
             )).scalar_one_or_none()
         
         if survey_dbm:
-            await MessageService.set_state_data(
-                state=state,
-                key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_SURVEY,
-                value=survey_dbm,
-            )
+            survey = await ScheduleSurveyService._get_or_create_survey(state)
+            
+            survey.save_selected_survey(survey_dbm)
+            
+            await ScheduleSurveyService._save_survey_changes(state, survey)
     
     @staticmethod
-    async def get_current_selected_survey(
+    async def get_selected_survey(
         state: FSMContext,
     ) -> Optional[SurveyDBM]:
-        survey_dbm = await MessageService.get_state_data(
-            state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_SURVEY,
-        )
-        
-        if survey_dbm:
-            return survey_dbm
-        
-        return None 
+        survey = await ScheduleSurveyService._get_or_create_survey(state)
+
+        return survey.get_selected_survey()
     
     @staticmethod
     async def get_connected_patients(
@@ -286,28 +288,22 @@ class ScheduleSurveyService:
         patient_id: int
     ) -> None:
         async with get_cached_sqlalchemy_db().new_async_session() as session:
-            patient_dbm = (await session.execute(
+            user_dbm = (await session.execute(
                 sqlalchemy
                 .select(UserDBM)
                 .where(UserDBM.tg_id == patient_id)
             )).scalar_one_or_none()
 
-        await MessageService.set_state_data(
-            state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_PATIENT,
-            value=patient_dbm,
-        )
+        survey = await ScheduleSurveyService._get_or_create_survey(state)
+
+        survey.save_selected_patient(user_dbm=user_dbm)
+
+        await ScheduleSurveyService._save_survey_changes(state, survey)
 
     @staticmethod
     async def get_selected_patient(
         state: FSMContext,
     ) -> Optional[UserDBM]:
-        patient_dbm = await MessageService.get_state_data(
-            state=state,
-            key=ScheduledSurvey._STATE_KEY_CURRENT_SELECTED_PATIENT,
-        )
-        
-        if patient_dbm is not None:
-            return patient_dbm
-        
-        return None
+        survey = await ScheduleSurveyService._get_or_create_survey(state)
+
+        return survey.get_selected_patient()

@@ -555,3 +555,28 @@ class DoctorKeyboard(CommonKeyboard):
         # Расположение кнопок (2 в ряд для основных, 1 для дополнительных)
         keyboard.adjust(2, 2, 1)
         return keyboard.as_markup()
+    
+
+    @staticmethod
+    def get_schedule_survey_confirmation_keyboard() -> InlineKeyboardMarkup:
+        keyboard = InlineKeyboardBuilder()
+        
+        # Основные кнопки подтверждения
+        keyboard.button(
+            text="✅ Подтвердить выбор",
+            callback_data=DoctorAction.CONFIRM_SCHEDULE_SURVEY
+        )
+
+        keyboard.button(
+            text="❌ Отменить планирование",
+            callback_data=DoctorAction.CANCEL_SCHEDULING
+        )
+
+        keyboard.button(
+            text="🔄 Выбрать другого пациента",
+            callback_data=DoctorAction.CONFIRM_SURVEY_SELECTION,
+        )
+
+        keyboard.adjust(2, 1)
+
+        return keyboard.as_markup()
