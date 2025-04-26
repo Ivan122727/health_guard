@@ -93,9 +93,9 @@ class CreatedSurvey:
         if not q.is_active:
             return False
         if q.is_from_template:
-            return q.template_question_id is not None
+            return not(q.template_question_id is None)
         else:
-            return q.text is not None and q.options is not None
+            return isinstance(q.text, str) and (isinstance(q.options, list) and 1 < len(q.options) < 11)
 
     def get_active_questions(self) -> List[Question]:
         """Возвращает список активных вопросов в порядке добавления"""

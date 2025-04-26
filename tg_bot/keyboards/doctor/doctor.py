@@ -167,7 +167,7 @@ class DoctorKeyboard(CommonKeyboard):
             )
         
         keyboard.button(
-            text="❌ Отменить создание",
+            text="❌ Отменить создание опроса",
             callback_data=DoctorAction.CANCEL_CREATE_SURVEY
         )
 
@@ -212,7 +212,7 @@ class DoctorKeyboard(CommonKeyboard):
             callback_data=DoctorAction.CREATE_TITLE_SURVEY
         )
         keyboard.button(
-            text="❌ Отменить создание",
+            text="❌ Отменить создание опроса",
             callback_data=DoctorAction.CANCEL_CREATE_SURVEY
         )
         
