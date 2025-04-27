@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Optional
 from shared.sqlalchemy_db_.sqlalchemy_model import SurveyDBM, UserDBM
 from shared.sqlalchemy_db_.sqlalchemy_model.scheduled_survey import ScheduledSurveyDBM
@@ -565,7 +566,10 @@ class DoctorBlank(CommonBlank):
     @staticmethod
     def get_multiple_times_confirmation_blank(survey: Survey) -> str:
         """Специфичный бланк для подтверждения нескольких опросов в день"""
-        times = "\n".join(f"• {t.strftime('%H:%M')}" for t in survey.schedule_times)
+        times = "\n".join(
+            f"• {(datetime.combine(datetime.today(), t) + timedelta(hours=5)).time().strftime('%H:%M')}" 
+            for t in survey.schedule_times
+        )
         return (
             "🔄 <b>Тип опроса: опрос несколько раз в день</b>\n\n"
             f"📋 <b>Название опроса:</b> {survey.survey_dbm.title}\n"
@@ -582,11 +586,15 @@ class DoctorBlank(CommonBlank):
     @staticmethod
     def get_once_per_day_confirmation_blank(survey: Survey) -> str:
         """Специфичный бланк для подтверждения ежедневного опроса"""
+        times = "\n".join(
+            f"• {(datetime.combine(datetime.today(), t) + timedelta(hours=5)).time().strftime('%H:%M')}" 
+            for t in survey.schedule_times
+        )
         return (
             "☀️ <b>Тип опроса: ежедневный опрос</b>\n\n"
             f"📋 <b>Название опроса:</b> {survey.survey_dbm.title}\n"
             f"👤 <b>Пациент:</b> {survey.patient_dbm.full_name}\n\n"
-            f"⏰ <b>Установленное время для прохождения:</b> {survey.schedule_times[0].strftime('%H:%M')}\n"
+            f"⏰ <b>Установленное время для прохождения:</b> {times}\n"
             f"📅 <b>Период:</b> {survey.start_date.strftime('%d.%m.%Y')} - {survey.end_date.strftime('%d.%m.%Y')}\n\n"
             "🔔 <b>Напоминания:</b>\n"
             f"• Будут приходить если опрос не пройден\n"
@@ -597,13 +605,17 @@ class DoctorBlank(CommonBlank):
     @staticmethod
     def get_every_few_days_confirmation_blank(survey: Survey) -> str:
         """Специфичный бланк для подтверждения опроса раз в несколько дней"""
+        times = "\n".join(
+            f"• {(datetime.combine(datetime.today(), t) + timedelta(hours=5)).time().strftime('%H:%M')}" 
+            for t in survey.schedule_times
+        )
         day_form = "день" if survey.interval_days == 1 else "дня" if 2 <= survey.interval_days <= 4 else "дней"
         return (
             "📆 <b>Тип опроса: опрос раз в несколько дней</b>\n\n"
             f"📋 <b>Название опроса:</b> {survey.survey_dbm.title}\n"
             f"👤 <b>Пациент:</b> {survey.patient_dbm.full_name}\n\n"
             f"🔄 <b>Интервал:</b> Каждые {survey.interval_days} {day_form}\n"
-            f"⏰ <b>Установленное время для прохождения:</b> {survey.schedule_times[0].strftime('%H:%M')}\n"
+            f"⏰ <b>Установленное время для прохождения:</b> {times}\n"
             f"📅 <b>Период:</b> {survey.start_date.strftime('%d.%m.%Y')} - {survey.end_date.strftime('%d.%m.%Y')}\n\n"
             "🔔 <b>Напоминания:</b>\n"
             f"• Будут приходить если опрос не пройден\n"
