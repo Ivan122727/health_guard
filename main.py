@@ -21,10 +21,10 @@ async def fetch_active_scheduled_surveys(session: AsyncSession) -> list[Schedule
     
     result = await session.execute(
         sqlalchemy.select(ScheduledSurveyDBM)
+        .where(ScheduledSurveyDBM.is_active)
         .where(ScheduledSurveyDBM.start_date <= today)
         .where(ScheduledSurveyDBM.end_date >= today)
         .where(ScheduledSurveyDBM.next_scheduled_date == today)
-        .where(ScheduledSurveyDBM.is_active)
         .order_by(ScheduledSurveyDBM.id)
     )
     
@@ -132,6 +132,10 @@ async def send_reminder_to_user(
         scheduled_time=scheduled_time,
         status=SurveyReminderDBM.ReminderStatus.SENT,
     )
+
+    # Отправлеят уведомление в телеграмме пока не пиши
+
+
     session.add(new_reminder)
     await session.flush()  # Сохраняем новое напоминание
 
@@ -190,6 +194,7 @@ async def process_scheduled_surveys() -> None:
                 for scheduled_time in survey.scheduled_times:
                     # Пропускаем если уже обработано
                     if await should_skip_reminders_for_time(session, survey, scheduled_time):
+                        await update_survey_schedule(session, survey)
                         continue
                     
                     # Вычисляем время следующего напоминания
