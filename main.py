@@ -1,5 +1,5 @@
 import asyncio
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 import pytz
 import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,133 +7,211 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import SurveyReminderDBM, ScheduledSurveyDBM
 
-# Получить опросы для которых надо уведомить пользователя
-async def get_scheduled_surveys(
-        session: AsyncSession
-    ) -> list[ScheduledSurveyDBM]:
-    now = datetime.now(tz=pytz.UTC)
 
-    scheduled_survey_dbms = (await session.execute(
-        sqlalchemy
-        .select(ScheduledSurveyDBM)
-        .where(ScheduledSurveyDBM.start_date <= now.date())
-        .where(ScheduledSurveyDBM.end_date >= now.date())
-        .where(ScheduledSurveyDBM.next_scheduled_date == now.date())
+async def fetch_active_scheduled_surveys(session: AsyncSession) -> list[ScheduledSurveyDBM]:
+    """
+    Получаем активные опросы, которые нужно обработать сегодня.
+    
+    Возвращает список опросов, у которых:
+    - текущая дата между start_date и end_date
+    - next_scheduled_date равен сегодняшней дате
+    - is_active=True
+    """
+    today = datetime.now(tz=pytz.UTC).date()
+    
+    result = await session.execute(
+        sqlalchemy.select(ScheduledSurveyDBM)
+        .where(ScheduledSurveyDBM.start_date <= today)
+        .where(ScheduledSurveyDBM.end_date >= today)
+        .where(ScheduledSurveyDBM.next_scheduled_date == today)
         .where(ScheduledSurveyDBM.is_active)
-    )).scalars().unique().all()
-
-    return scheduled_survey_dbms
-
-# Получить для запланированного времени отправленные уведомления
-async def get_survey_remind(
-        session: AsyncSession,
-        scheduled_survey_dbm: ScheduledSurveyDBM,
-        scheduled_time: time
-):
-    now = datetime.now(tz=pytz.UTC)
+        .order_by(ScheduledSurveyDBM.id)
+    )
     
-    survey_reminder_dbms = (await session.execute(
-        sqlalchemy
-        .select(SurveyReminderDBM)
-        .where(SurveyReminderDBM.creation_dt == now.date())
-        .where(SurveyReminderDBM.scheduled_survey_id == scheduled_survey_dbm.id)
+    return result.scalars().unique().all()
+
+
+async def fetch_todays_reminders_for_time(
+    session: AsyncSession,
+    survey: ScheduledSurveyDBM,
+    scheduled_time: time
+) -> list[SurveyReminderDBM]:
+    """
+    Получаем все напоминания для указанного опроса и времени, 
+    которые были созданы сегодня.
+    """
+    today = datetime.now(tz=pytz.UTC).date()
+
+
+    result = await session.execute(
+        sqlalchemy.select(SurveyReminderDBM)
+        .where(sqlalchemy.func.date(SurveyReminderDBM.creation_dt) == today)
+        .where(SurveyReminderDBM.scheduled_survey_id == survey.id)
         .where(SurveyReminderDBM.scheduled_time == scheduled_time)
-    )).scalars().unique().all()
+    )
     
-    return survey_reminder_dbms
+    return result.scalars().unique().all()
 
-# Получает время во-сколько надо отправить уведомления для запланированного времени
-async def get_reminder_scheduled_time(
-        session: AsyncSession,
-        scheduled_survey_dbm: ScheduledSurveyDBM,
-        scheduled_time: time
-):
-    survey_reminder_dbms = await get_survey_remind(session, scheduled_survey_dbm, scheduled_time)
 
-    return scheduled_time + time(len(survey_reminder_dbms) * scheduled_survey_dbm.reminder_interval_hours)
+async def calculate_next_reminder_time(
+    session: AsyncSession,
+    survey: ScheduledSurveyDBM,
+    scheduled_time: time
+) -> time:
+    """
+    Вычисляем время следующего напоминания на основе:
+    - базового времени отправки
+    - количества уже отправленных напоминаний
+    - интервала между напоминаниями
+    """
+    reminders = await fetch_todays_reminders_for_time(session, survey, scheduled_time)
+    
+    # Вычисляем сколько часов нужно добавить к базовому времени
+    hours_to_add = len(reminders) * survey.reminder_interval_hours
+    
+    # Создаем временную метку для вычислений
+    dummy_datetime = datetime.combine(date.today(), scheduled_time)
+    next_time = (dummy_datetime + timedelta(hours=hours_to_add)).time()
+    
+    return next_time
 
-# Функция уведомляет пользователя если он прошел уже не уведомлеяет 
-# или если кол-во уведомлений лимит привышен, статус уведомленияем меняет на FAILED
-async def notify_user(
-        session: AsyncSession,
-        scheduled_survey_dbm: ScheduledSurveyDBM,
-        scheduled_time: time
-    ):
-        now = datetime.now(tz=pytz.UTC)
 
-        survey_reminder_dbms = await get_survey_remind(session, scheduled_survey_dbm, scheduled_time)
-
-        if SurveyReminderDBM.ReminderStatus.COMPLETED in {r.status for r in survey_reminder_dbms}:
-            return
-        elif len(survey_reminder_dbms) == scheduled_survey_dbm.max_reminders:
-            for survey_reminder_dbm in survey_reminder_dbms:
-                survey_reminder_dbm.status = SurveyReminderDBM.ReminderStatus.FAILED,
-                await session.refresh(survey_reminder_dbm)
-        else:
-            survey_reminder_dbm = SurveyReminderDBM(
-                scheduled_survey_id=scheduled_survey_dbm.id,
-                reminder_number=len(survey_reminder_dbms) + 1,
-                scheduled_time=scheduled_time,
-                status=SurveyReminderDBM.ReminderStatus.SENT,
-                sent_at=now,
-            )
-
-# Функция говорит о том, что достаточно для запланированного времени на сегодня уведомлять пользователя
-async def is_enogh_send_remind_for_schedule_time(
-        session: AsyncSession,
-        scheduled_survey_dbm: ScheduledSurveyDBM,
-        scheduled_time: time
-):
-    now = datetime.now(tz=pytz.UTC)
-
-    survey_reminder_dbms = await get_survey_remind(session, scheduled_survey_dbm, scheduled_time)
-
-    if SurveyReminderDBM.ReminderStatus.COMPLETED in {r.status for r in survey_reminder_dbms}:
+async def should_skip_reminders_for_time(
+    session: AsyncSession,
+    survey: ScheduledSurveyDBM,
+    scheduled_time: time
+) -> bool:
+    """
+    Проверяем, нужно ли пропускать напоминания для этого времени:
+    - если пользователь уже завершил опрос (есть напоминание со статусом COMPLETED)
+    - если достигнут лимит напоминаний (max_reminders)
+    """
+    reminders = await fetch_todays_reminders_for_time(session, survey, scheduled_time)
+    
+    # Пропускаем если пользователь уже завершил опрос
+    if any(r.status == SurveyReminderDBM.ReminderStatus.COMPLETED for r in reminders):
         return True
-    elif len(survey_reminder_dbms) == scheduled_survey_dbm.max_reminders:
+    
+    # Пропускаем если достигнут максимум напоминаний
+    if len(reminders) >= survey.max_reminders:
+        for reminder in reminders:
+            reminder.status = SurveyReminderDBM.ReminderStatus.FAILED
+            await session.flush()  # Сохраняем изменения
         return True
     
     return False
 
-# Функция меняет для опроса в какой день нужно отправить по неме уведомления
-async def update_next_schedule_date(
-        session: AsyncSession,
-        scheduled_survey_dbm: ScheduledSurveyDBM,
-):
-    # Допиши чтобы если is_enogh_send_remind_for_schedule_time для всех scheduled_survey_dbm.scheduled_times
-    # То мы делаем это
-    if scheduled_survey_dbm.frequency_type == ScheduledSurveyDBM.FrequencyType.EVERY_FEW_DAYS:
-        diff = # Добавь scheduled_survey_dbm.interval_days дней 
-    else:
-        diff = # Добавь один день
+
+async def send_reminder_to_user(
+    session: AsyncSession,
+    survey: ScheduledSurveyDBM,
+    scheduled_time: time
+) -> None:
+    """
+    Отправляем напоминание пользователю или помечаем существующие как FAILED,
+    если достигнут лимит.
+    """
+    now = datetime.now(tz=pytz.UTC)
+    reminders = await fetch_todays_reminders_for_time(session, survey, scheduled_time)
+
+    # Не отправляем если пользователь уже завершил опрос
+    if any(r.status == SurveyReminderDBM.ReminderStatus.COMPLETED for r in reminders):
+        return
     
-    if # scheduled_survey_dbm.end_date < scheduled_survey_dbm.next_scheduled_date + diff:
-        scheduled_survey_dbm.next_scheduled_date = None
-        scheduled_survey_dbm.is_active = False
+    # Если достигнут лимит - помечаем все как FAILED
+    if len(reminders) >= survey.max_reminders:
+        for reminder in reminders:
+            reminder.status = SurveyReminderDBM.ReminderStatus.FAILED
+            await session.flush()  # Сохраняем изменения
+        return
+    
+    # Создаем новое напоминание
+    new_reminder = SurveyReminderDBM(
+        scheduled_survey_id=survey.id,
+        reminder_number=len(reminders) + 1,
+        scheduled_time=scheduled_time,
+        status=SurveyReminderDBM.ReminderStatus.SENT,
+    )
+    session.add(new_reminder)
+    await session.flush()  # Сохраняем новое напоминание
+
+
+async def update_survey_schedule(
+    session: AsyncSession,
+    survey: ScheduledSurveyDBM
+) -> None:
+    """
+    Обновляем расписание опроса:
+    - вычисляем следующую дату отправки
+    - деактивируем опрос если он завершен
+    """
+    # Проверяем все ли напоминания для всех временных слотов обработаны
+    checks = []
+    for time_obj in survey.scheduled_times:
+        checks.append(await should_skip_reminders_for_time(session, survey, time_obj))
+    
+    if not all(checks):
+        return  # Не все напоминания отправлены
+    
+    # Вычисляем следующую дату в зависимости от типа периодичности
+    if survey.frequency_type == ScheduledSurveyDBM.FrequencyType.EVERY_FEW_DAYS:
+        date_diff = timedelta(days=survey.interval_days)
+    else:  # DAILY
+        date_diff = timedelta(days=1)
+    
+    next_date = survey.next_scheduled_date + date_diff
+    
+    print("wwewew")
+    # Проверяем не выходит ли новая дата за end_date
+    if survey.end_date < next_date:
+        survey.next_scheduled_date = None
+        survey.is_active = False
     else:
-        scheduled_survey_dbm.next_scheduled_date = scheduled_survey_dbm.next_scheduled_date + diff
+        survey.next_scheduled_date = next_date
+    
+    await session.flush()  # Сохраняем изменения
 
-    await session.refresh(scheduled_survey_dbm)
 
+async def process_scheduled_surveys() -> None:
+    """Основная функция для обработки запланированных опросов и отправки напоминаний."""
 
-async def main():
     async with get_cached_sqlalchemy_db().new_async_session() as session:
-        scheduled_survey_dbms = await get_scheduled_surveys(session)
+        try:
+            surveys = await fetch_active_scheduled_surveys(session)
+            if not surveys:
+                return  # Нет опросов для обработки
+            
+            now = datetime.now(tz=pytz.UTC)
 
-        now = datetime.now(tz=pytz.UTC)
+            for survey in surveys:
+                if not survey.scheduled_times:
+                    continue  # Нет временных слотов для отправки
+                
+                for scheduled_time in survey.scheduled_times:
+                    # Пропускаем если уже обработано
+                    if await should_skip_reminders_for_time(session, survey, scheduled_time):
+                        continue
+                    
+                    # Вычисляем время следующего напоминания
+                    next_reminder_time = await calculate_next_reminder_time(
+                        session, survey, scheduled_time
+                    )
+                    
+                    # Проверяем наступило ли время отправки
+                    if now.time() >= next_reminder_time:
+                        await send_reminder_to_user(session, survey, scheduled_time)
+                        await update_survey_schedule(session, survey)
 
-        for scheduled_survey_dbm in scheduled_survey_dbms:
-            for scheduled_time in scheduled_survey_dbm.scheduled_times:
-                reminder_scheduled_time = await get_reminder_scheduled_time(
-                    session,
-                    scheduled_survey_dbm,
-                    scheduled_time
-                )
 
-                if now.time() >= reminder_scheduled_time:
-                    await notify_user(session, scheduled_survey_dbm, scheduled_time)
-                    await update_next_schedule_date(session, scheduled_survey_dbm)
+            await session.commit()
+        except Exception as e:
+            print(f"Ошибка при обработке опросов: {str(e)}")
+            await session.rollback()  # Откатываем изменения в случае ошибки
+            raise
 
-   
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(process_scheduled_surveys())
+    except Exception as e:
+        print(f"Критическая ошибка: {str(e)}")

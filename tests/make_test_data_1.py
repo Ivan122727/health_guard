@@ -1,6 +1,9 @@
+from datetime import datetime
 import os
 from pathlib import Path
 import sys
+
+import pytz
 
 # Получаем путь к родительской директории
 parent_dir = Path(__file__).parent.parent
@@ -28,7 +31,7 @@ async def make_test_data():
         doctor_dbm = UserDBM(
             tg_id=457643251,
             role=UserDBM.Roles.doctor,
-            full_name="Ермолов  Иван  Олегович"
+            full_name="Ермолов  Иван  Олегович",
         )
         async_session.add(doctor_dbm)
         await async_session.flush()

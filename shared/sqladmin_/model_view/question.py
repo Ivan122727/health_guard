@@ -10,7 +10,6 @@ class QuestionMV(SimpleMV, model=QuestionDBM):
     
     column_list = [
         QuestionDBM.id,
-        QuestionDBM.creation_dt,
         QuestionDBM.author,  # Для отображения в списке
         QuestionDBM.question_text,
         QuestionDBM.question_type,
@@ -27,7 +26,6 @@ class QuestionMV(SimpleMV, model=QuestionDBM):
     
     column_details_list = [
         QuestionDBM.id,
-        QuestionDBM.creation_dt,
         QuestionDBM.author,
         QuestionDBM.question_text,
         QuestionDBM.question_type,
@@ -37,7 +35,6 @@ class QuestionMV(SimpleMV, model=QuestionDBM):
     
     column_sortable_list = [
         QuestionDBM.id,
-        QuestionDBM.creation_dt,
     ]
     
     column_default_sort = [(QuestionDBM.id, True)]

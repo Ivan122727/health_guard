@@ -2,7 +2,9 @@ from datetime import datetime, time
 from enum import Enum
 from typing import Optional
 
+import pytz
 import sqlalchemy
+from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from shared.sqlalchemy_db_.sqlalchemy_model.common import SimpleDBM
@@ -48,14 +50,8 @@ class SurveyReminderDBM(SimpleDBM):
         comment="Статус напоминания"
     )
     
-    sent_at: Mapped[Optional[datetime]] = mapped_column(
-        sqlalchemy.TIMESTAMP,
-        nullable=True,
-        comment="Время фактической отправки"
-    )
-    
     completed_at: Mapped[Optional[datetime]] = mapped_column(
-        sqlalchemy.TIMESTAMP,
+        sqlalchemy.TIMESTAMP(timezone=True),
         nullable=True,
         comment="Время завершения опроса"
     )

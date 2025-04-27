@@ -1,7 +1,7 @@
 import sqlalchemy
 import pytz
 from datetime import datetime
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Mapped, mapped_column
 from shared.sqlalchemy_db_.database import BaseDBM
 
@@ -19,8 +19,7 @@ class SimpleDBM(BaseDBM):
     
     creation_dt: Mapped[datetime] = mapped_column(
         sqlalchemy.TIMESTAMP(timezone=True),
-        nullable=False,
-        index=True,
+        nullable=True,
         insert_default=datetime.now(tz=pytz.UTC),
         server_default=func.now(),
         sort_order=-100,

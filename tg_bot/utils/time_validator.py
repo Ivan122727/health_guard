@@ -44,9 +44,9 @@ class TimeValidator:
                 if not (0 <= hours <= 23 and 0 <= minutes <= 59):
                     return False, None, "Часы должны быть от 0 до 23, минуты от 0 до 59"
                 
-                t = time(hour=hours, minute=minutes)
+                t = time(hour=hours - 5, minute=minutes)
                 # Проверяем что время в допустимом диапазоне 07:00-22:00
-                if t < time(7, 0) or t > time(22, 0):
+                if t < time(2, 0) or t > time(17, 0):
                     return False, None, f"Время {t.strftime('%H:%M')} должно быть между 07:00 и 22:00"
                 
                 times.append(t)
@@ -55,10 +55,10 @@ class TimeValidator:
                 return False, None, f"Некорректный формат времени: {time_str}"
         
         # Проверяем временные ограничения для первого и последнего времени
-        if times[0] < time(7, 0):
+        if times[0] < time(2, 0):
             return False, None, "Первый опрос не может быть раньше 07:00"
         
-        if times[-1] > time(22, 0):
+        if times[-1] > time(17, 0):
             return False, None, "Последний опрос не может быть позже 22:00"
         
         # Проверяем интервалы и порядок

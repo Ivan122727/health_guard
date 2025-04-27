@@ -13,7 +13,6 @@ class SurveyReminderMV(SimpleMV, model=SurveyReminderDBM):
         SurveyReminderDBM.reminder_number,
         SurveyReminderDBM.scheduled_time,
         SurveyReminderDBM.status,
-        SurveyReminderDBM.sent_at,
         SurveyReminderDBM.completed_at,
     ]
     
@@ -24,7 +23,6 @@ class SurveyReminderMV(SimpleMV, model=SurveyReminderDBM):
         SurveyReminderDBM.reminder_number,
         SurveyReminderDBM.scheduled_time,
         SurveyReminderDBM.status,
-        SurveyReminderDBM.sent_at,
         SurveyReminderDBM.completed_at,
     ]
     
@@ -35,7 +33,6 @@ class SurveyReminderMV(SimpleMV, model=SurveyReminderDBM):
         SurveyReminderDBM.reminder_number,
         SurveyReminderDBM.scheduled_time,
         SurveyReminderDBM.status,
-        SurveyReminderDBM.sent_at,
         SurveyReminderDBM.completed_at,
     ]
     

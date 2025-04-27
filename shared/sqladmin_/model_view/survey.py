@@ -9,12 +9,10 @@ class SurveyMV(SimpleMV, model=SurveyDBM):
     
     column_list = [
         SurveyDBM.id,
-        SurveyDBM.creation_dt,
         SurveyDBM.title,
         SurveyDBM.description,
         'author',  # Показываем через relationship
         SurveyDBM.is_active,
-        "questions_count"
     ]
     
     form_columns = [
@@ -34,7 +32,6 @@ class SurveyMV(SimpleMV, model=SurveyDBM):
     # Остальные атрибуты остаются без изменений
     column_details_list = [
         SurveyDBM.id,
-        SurveyDBM.creation_dt,
         SurveyDBM.title,
         SurveyDBM.description,
         'author',
@@ -44,7 +41,6 @@ class SurveyMV(SimpleMV, model=SurveyDBM):
     
     column_sortable_list = [
         SurveyDBM.id,
-        SurveyDBM.creation_dt,
         SurveyDBM.title,
         SurveyDBM.is_active
     ]
@@ -61,9 +57,3 @@ class SurveyMV(SimpleMV, model=SurveyDBM):
         SurveyDBM.is_active,
         "author"
     ]
-    
-    def questions_count(self, obj):
-        return len(obj.questions) if obj.questions else 0
-    
-    questions_count.column_type = sqlalchemy.Integer
-    questions_count.column_name = "Questions Count"
