@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from enum import Enum
 from typing import Optional
 
@@ -35,8 +35,8 @@ class SurveyReminderDBM(SimpleDBM):
         comment="Номер напоминания (1, 2, 3...)"
     )
     
-    scheduled_time: Mapped[datetime] = mapped_column(
-        sqlalchemy.TIMESTAMP,
+    scheduled_time: Mapped[time] = mapped_column(
+        sqlalchemy.TIME,
         nullable=False,
         comment="Запланированное время отправки"
     )

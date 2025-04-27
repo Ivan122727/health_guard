@@ -88,7 +88,7 @@ async def main():
             # 7. Создаем напоминания для запланированного опроса
             reminder_data = []
             for i in range(1, scheduled_survey.max_reminders + 1):
-                reminder_time = scheduled_survey.next_scheduled_time + timedelta(
+                reminder_time = scheduled_survey.next_scheduled_date + timedelta(
                     hours=(i-1)*scheduled_survey.reminder_interval_hours
                 )
                 
@@ -125,7 +125,7 @@ async def main():
             doctor_id = doctor.id
             start_date = scheduled_survey.start_date
             end_date = scheduled_survey.end_date
-            next_time = scheduled_survey.next_scheduled_time
+            next_time = scheduled_survey.next_scheduled_date
             response_data = {
                 'id': response.id,
                 'question': question.question_text,

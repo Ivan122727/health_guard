@@ -351,9 +351,9 @@ class ScheduleSurveyService:
                 interval_days=survey.interval_days,
                 start_date=survey.start_date,
                 end_date=survey.end_date,
-                schedule_times=survey.schedule_times,
+                scheduled_times=survey.schedule_times,
                 reminder_interval_hours=survey.reminder_interval_hours,
-                next_scheduled_time=survey.start_date,
+                next_scheduled_date=survey.start_date,
             )
 
             session.add(schedule_survey)

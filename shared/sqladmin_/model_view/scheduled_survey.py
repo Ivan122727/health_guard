@@ -19,11 +19,11 @@ class ScheduledSurveyMV(SimpleMV, model=ScheduledSurveyDBM):
         ScheduledSurveyDBM.interval_days,
         ScheduledSurveyDBM.start_date,
         ScheduledSurveyDBM.end_date,
-        ScheduledSurveyDBM.schedule_times,
+        ScheduledSurveyDBM.scheduled_times,
         ScheduledSurveyDBM.max_reminders,
         ScheduledSurveyDBM.reminder_interval_hours,
         ScheduledSurveyDBM.is_active,
-        ScheduledSurveyDBM.next_scheduled_time,
+        ScheduledSurveyDBM.next_scheduled_date,
     ]
     
     form_columns = [
@@ -35,11 +35,11 @@ class ScheduledSurveyMV(SimpleMV, model=ScheduledSurveyDBM):
         ScheduledSurveyDBM.interval_days,
         ScheduledSurveyDBM.start_date,
         ScheduledSurveyDBM.end_date,
-        ScheduledSurveyDBM.schedule_times,
+        ScheduledSurveyDBM.scheduled_times,
         ScheduledSurveyDBM.max_reminders,
         ScheduledSurveyDBM.reminder_interval_hours,
         ScheduledSurveyDBM.is_active,
-        ScheduledSurveyDBM.next_scheduled_time,
+        ScheduledSurveyDBM.next_scheduled_date,
     ]
     
     column_details_list = [
@@ -51,11 +51,11 @@ class ScheduledSurveyMV(SimpleMV, model=ScheduledSurveyDBM):
         ScheduledSurveyDBM.interval_days,
         ScheduledSurveyDBM.start_date,
         ScheduledSurveyDBM.end_date,
-        ScheduledSurveyDBM.schedule_times,
+        ScheduledSurveyDBM.scheduled_times,
         ScheduledSurveyDBM.max_reminders,
         ScheduledSurveyDBM.reminder_interval_hours,
         ScheduledSurveyDBM.is_active,
-        ScheduledSurveyDBM.next_scheduled_time,
+        ScheduledSurveyDBM.next_scheduled_date,
     ]
     
     column_sortable_list = [

@@ -73,7 +73,7 @@ class ScheduledSurveyDBM(SimpleDBM):
         comment="Дата окончания опросов"
     )
     
-    schedule_times: Mapped[List[time]] = mapped_column(
+    scheduled_times: Mapped[List[time]] = mapped_column(
         sqlalchemy.ARRAY(sqlalchemy.TIME),
         nullable=True,
         comment="Список во-сколько проходить опрос"
@@ -100,8 +100,8 @@ class ScheduledSurveyDBM(SimpleDBM):
         comment="Активно ли расписание"
     )
     
-    next_scheduled_time: Mapped[Optional[datetime]] = mapped_column(
-        sqlalchemy.TIMESTAMP,
+    next_scheduled_date: Mapped[Optional[date]] = mapped_column(
+        sqlalchemy.DATE,
         nullable=True,
         comment="Следующее запланированное время опроса"
     )
