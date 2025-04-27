@@ -9,7 +9,7 @@ from shared.sqlalchemy_db_.sqlalchemy_model import SimpleDBM
 def create_sqlalchemy_db() -> SQLAlchemyDb | None:
     if not get_cached_settings().database.DATABASE_URL and not get_cached_settings().database.ASYNC_DATABASE_URL:
         return None
-
+    
     return SQLAlchemyDb(
         sync_db_url=get_cached_settings().database.DATABASE_URL,
         async_db_url=get_cached_settings().database.ASYNC_DATABASE_URL,

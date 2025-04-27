@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -44,7 +44,7 @@ class ScheduledSurveyDBM(SimpleDBM):
     )
     
     frequency_type: Mapped[str] = mapped_column(
-        sqlalchemy.String(20),
+        sqlalchemy.String(50),
         nullable=False,
         comment="Тип опроса: multiple_times_per_day, once_per_day, every_few_days"
     )
@@ -61,18 +61,24 @@ class ScheduledSurveyDBM(SimpleDBM):
         comment="Интервал в днях между опросами для типа (every_few_days)"
     )
 
-    start_date: Mapped[datetime] = mapped_column(
-        sqlalchemy.TIMESTAMP,
+    start_date: Mapped[date] = mapped_column(
+        sqlalchemy.DATE,
         nullable=False,
         comment="Дата начала опросов"
     )
     
-    end_date: Mapped[Optional[datetime]] = mapped_column(
-        sqlalchemy.TIMESTAMP,
+    end_date: Mapped[Optional[date]] = mapped_column(
+        sqlalchemy.DATE,
         nullable=True,
         comment="Дата окончания опросов"
     )
     
+    schedule_times: Mapped[List[time]] = mapped_column(
+        sqlalchemy.ARRAY(sqlalchemy.TIME),
+        nullable=True,
+        comment="Список во-сколько проходить опрос"
+    )
+
     max_reminders: Mapped[int] = mapped_column(
         sqlalchemy.INTEGER,
         nullable=False,

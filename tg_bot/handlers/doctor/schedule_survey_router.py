@@ -1038,8 +1038,9 @@ async def confirm_schedule_survey_cq(
 ):
     await callback_query.answer("Опрос успешно был запланирован!")
 
-    await ScheduleSurveyService.clear_schedule_data(
-        state=state,
+    await ScheduleSurveyService.schedule_suvey(
+        state=state, 
+        user_id=user_dbm.tg_id
     )
 
     await MessageService.edith_managed_message(

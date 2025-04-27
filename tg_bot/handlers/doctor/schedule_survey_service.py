@@ -6,7 +6,7 @@ from datetime import date, time
 from typing import Tuple
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, DoctorPatientDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, ScheduledSurveyDBM, SurveyReminderDBM
 from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.handlers.doctor.survey_models import Question, ScheduledSurvey
 from tg_bot.utils.time_validator import TimeValidator
@@ -307,3 +307,58 @@ class ScheduleSurveyService:
         survey = await ScheduleSurveyService._get_or_create_survey(state)
 
         return survey.get_selected_patient()
+    
+    @staticmethod
+    async def save_selected_doctor(
+        state: FSMContext,
+        user_id: int
+    ):
+        survey = await ScheduleSurveyService._get_or_create_survey(state)
+
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            user_dbm = (await session.execute(
+                sqlalchemy
+                .select(UserDBM)
+                .where(UserDBM.tg_id == user_id)
+                .where(UserDBM.role == UserDBM.Roles.doctor)
+            )).scalar_one()
+
+        survey.save_selected_doctor(user_dbm=user_dbm)
+
+        await ScheduleSurveyService._save_survey_changes(state, survey)
+
+    @staticmethod
+    async def schedule_suvey(
+        state: FSMContext,
+        user_id: int,
+    ):
+        await ScheduleSurveyService.save_selected_doctor(
+            state=state, 
+            user_id=user_id
+        )
+
+        survey_form = await ScheduleSurveyService._get_or_create_survey(state)
+        
+        survey = survey_form.get_survey()
+
+        async with get_cached_sqlalchemy_db().new_async_session() as session:
+            schedule_survey = ScheduledSurveyDBM(
+                survey_id=survey.survey_dbm.id,
+                patient_id=survey.patient_dbm.tg_id,
+                doctor_id=survey.doctor_dbm.tg_id,
+                frequency_type=survey.frequency_type,
+                times_per_day=survey.times_per_day,
+                interval_days=survey.interval_days,
+                start_date=survey.start_date,
+                end_date=survey.end_date,
+                schedule_times=survey.schedule_times,
+                reminder_interval_hours=survey.reminder_interval_hours,
+                next_scheduled_time=survey.start_date,
+            )
+
+            session.add(schedule_survey)
+            await session.commit()
+
+        await ScheduleSurveyService.clear_schedule_data(
+            state=state,
+        )

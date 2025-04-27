@@ -459,12 +459,9 @@ class CreateSurveyService:
                     )
                 )).scalar_one()
             except Exception as e:
-                print("wwewe\n\n")
-                print(str(e))
                 return False
         else:
             if question.text is None or question.options is None:
-                print("Nooooooo\n\n")
                 return False
 
             question_dbm = QuestionDBM(

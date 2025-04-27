@@ -174,5 +174,11 @@ class ScheduledSurvey:
     def get_selected_patient(self):
         return self.survey.patient_dbm
 
+    def save_selected_doctor(self, user_dbm: UserDBM):
+        self.survey.doctor_dbm = user_dbm
+
+    def get_selected_doctor(self):
+        return self.survey.doctor_dbm
+
     def get_survey(self):
         return self.survey
