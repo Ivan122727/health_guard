@@ -1,3 +1,4 @@
+from datetime import time
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM
 from tg_bot.blanks import CommonBlank
 
@@ -40,4 +41,29 @@ class PatientBlank(CommonBlank):
             f"👨⚕️ <b>{doctor_dbm.full_name}</b>\n\n"
             f"Теперь вы можете записываться на прием."
         )
+        return text
+        
+    @staticmethod
+    def get_survey_notification_blank(
+        title: str,
+        doctor_name: str, 
+        scheduled_time: time,
+        reminder_number: int,
+        max_reminders: int = 3
+    ) -> str:
+        formatted_time = scheduled_time.strftime("%H:%M")
+        
+        text = (
+            f"🔔 <b>Напоминание {reminder_number}/{max_reminders}</b>\n"
+            f"🩺 Вам назначен опрос от врача\n\n"
+            f"👨⚕️ <b>Врач:</b> {doctor_name}\n"
+            f"📝 <b>Опрос:</b> {title}\n"
+            f"⏰ <b>Время прохождения:</b> {formatted_time}\n\n"
+        )
+        
+        if reminder_number < max_reminders:
+            text += "Пожалуйста, не забудьте пройти опрос в указанное время."
+        else:
+            text += "⏳ <b>Последнее напоминание!</b> Пожалуйста, пройдите опрос как можно скорее."
+        
         return text

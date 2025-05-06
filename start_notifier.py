@@ -1,20 +1,33 @@
 import asyncio
-from abc import ABC, abstractmethod
-from datetime import date, datetime, time, timedelta
-from typing import List, Optional
 import pytz
 import sqlalchemy
+from aiogram import Bot
+from datetime import date, datetime, time, timedelta
+from aiogram.enums import ParseMode
+from typing import List, Optional
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.client.default import DefaultBotProperties
 
+from shared.config import BotSettings
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import SurveyReminderDBM, ScheduledSurveyDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import SurveyReminderDBM, ScheduledSurveyDBM, SurveyDBM
+from tg_bot.blanks.patient import PatientBlank
+from tg_bot.handlers.common.message_service import MessageService
 
+class NotificationSender:
+    def __init__(self, settings: BotSettings):
+        self.bot = Bot(
+            token=settings.BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+        )
 
-class BaseNotificationSender(ABC):
-    """Базовый абстрактный класс для отправки уведомлений."""
-    
-    @abstractmethod
-    async def send_notification(self, user_id: int, message: str) -> bool:
+    async def send_notification(
+        self, 
+        scheduled_survey: ScheduledSurveyDBM,
+        scheduled_time: time,
+        reminder_number: int,
+    ) -> bool:
         """Отправить уведомление пользователю.
         
         Args:
@@ -24,13 +37,24 @@ class BaseNotificationSender(ABC):
         Returns:
             bool: Результат отправки (True - успешно, False - ошибка)
         """
-        pass
+        await MessageService.send_managed_message(
+            bot=self.bot,
+            user_id=scheduled_survey.patient_id,
+            text=PatientBlank.get_survey_notification_blank(
+                title=scheduled_survey.survey.title,
+                doctor_name=scheduled_survey.doctor.full_name,
+                scheduled_time=scheduled_time,
+                reminder_number=reminder_number,
+                max_reminders=scheduled_survey.max_reminders,
+            ),
+        )
+
 
 
 class SurveyReminderProcessor:
     """Обработчик напоминаний для опросов."""
     
-    def __init__(self, session: AsyncSession, notification_sender: Optional[BaseNotificationSender] = None):
+    def __init__(self, session: AsyncSession, notification_sender: Optional[NotificationSender] = None):
         """Инициализация процессора.
         
         Args:
@@ -55,6 +79,11 @@ class SurveyReminderProcessor:
         
         result = await self.session.execute(
             sqlalchemy.select(ScheduledSurveyDBM)
+            .options(
+                joinedload(ScheduledSurveyDBM.survey),
+                joinedload(ScheduledSurveyDBM.patient),
+                joinedload(ScheduledSurveyDBM.doctor)
+            )
             .where(ScheduledSurveyDBM.is_active)
             .where(ScheduledSurveyDBM.start_date <= today)
             .where(ScheduledSurveyDBM.end_date >= today)
@@ -158,7 +187,6 @@ class SurveyReminderProcessor:
             survey: Объект опроса
             scheduled_time: Время отправки
         """
-        now = datetime.now(tz=pytz.UTC)
         reminders = await self.fetch_todays_reminders_for_time(survey, scheduled_time)
 
         # Не отправляем если пользователь уже завершил опрос
@@ -178,12 +206,15 @@ class SurveyReminderProcessor:
             reminder_number=len(reminders) + 1,
             scheduled_time=scheduled_time,
             status=SurveyReminderDBM.ReminderStatus.SENT,
+            creation_dt=datetime.now(tz=pytz.UTC),
         )
-
         # Отправляем уведомление, если настроен отправитель
         if self.notification_sender:
-            message = f"Напоминание об опросе {survey.id}"
-            await self.notification_sender.send_notification(survey.patient_id, message)
+            await self.notification_sender.send_notification(
+                scheduled_survey=survey, 
+                scheduled_time=scheduled_time,
+                reminder_number=len(reminders) + 1,
+            )
 
         self.session.add(new_reminder)
         await self.session.flush()
@@ -228,7 +259,7 @@ class SurveyReminderProcessor:
 class SurveyNotifier:
     """Основной класс для планирования и обработки уведомлений об опросах."""
     
-    def __init__(self, interval_minutes: int = 15, notification_sender: Optional[BaseNotificationSender] = None):
+    def __init__(self, interval_minutes: int = 15, notification_sender: Optional[NotificationSender] = None):
         """Инициализация планировщика.
         
         Args:
@@ -284,8 +315,10 @@ class SurveyNotifier:
                 await self.process_scheduled_surveys()
             except Exception as e:
                 print(f"Ошибка в цикле планировщика: {str(e)}")
-            
-            await asyncio.sleep(self.interval_minutes * 60)
+
+            minute = 30
+
+            await asyncio.sleep(self.interval_minutes * minute)
     
     async def stop(self) -> None:
         """Остановить планировщик."""
@@ -294,7 +327,10 @@ class SurveyNotifier:
 
 async def main():
     """Точка входа для планировщика."""
-    notifier = SurveyNotifier(interval_minutes=15)
+    notification_settings = BotSettings()
+    notification_sender = NotificationSender(settings=notification_settings)
+
+    notifier = SurveyNotifier(interval_minutes=1, notification_sender=notification_sender)
     try:
         await notifier.start()
     except KeyboardInterrupt:
