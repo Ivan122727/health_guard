@@ -14,6 +14,35 @@ from tg_bot.states import ChangeFullNameStates
 router = Router()
 
 
+async def proccess_start_message(
+    message: Message,
+    state: FSMContext,
+    keyboard: type[CommonKeyboard],
+    blank: type[CommonBlank],
+    user_dbm: type[UserDBM],
+    from_cq: bool = True,
+):
+    message_from_cq = message if from_cq else None
+
+    await MessageService.edith_managed_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            text=blank.get_default_blank(user_dbm.full_name),
+            reply_markup=keyboard.get_default_keyboard(),
+            state=state,
+            previous_message_key="start_msg_id",
+            message_id_storage_key="start_msg_id",
+            new_state=None,
+            message=message_from_cq,
+    )
+
+    if not from_cq:
+        await MessageService.remove_previous_message(
+            bot=message.bot,
+            user_id=user_dbm.tg_id,
+            message_id=message.message_id,
+        )  
+
 # Обработчик стартового сообщения
 @router.message(State(None))
 async def handle_start_message(
@@ -31,21 +60,13 @@ async def handle_start_message(
         keyboard: Фабрика клавиатур
         blank: Фабрика шаблонов сообщений
     """
-    await MessageService.edith_managed_message(
-        bot=message.bot,
-        user_id=message.from_user.id,
-        text=blank.get_default_blank(user_dbm.full_name),
-        reply_markup=keyboard.get_default_keyboard(),
+    await proccess_start_message(
+        message=message,
         state=state,
-        previous_message_key="start_msg_id",
-        message_id_storage_key="start_msg_id",
-    )
-
-    # Удаляем сообщение пользователя
-    await MessageService.remove_previous_message(
-        bot=message.bot,
-        user_id=message.from_user.id,
-        message_id=message.message_id
+        keyboard=keyboard,
+        blank=blank,
+        user_dbm=user_dbm,
+        from_cq=False
     )
 
 

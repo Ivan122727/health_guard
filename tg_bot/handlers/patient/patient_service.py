@@ -1,8 +1,10 @@
 from typing import Any
 import sqlalchemy
+from aiogram.fsm.context import FSMContext
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, DoctorPatientDBM
+from tg_bot.handlers.common.message_service import MessageService
 
 
 class PatientService:
@@ -80,3 +82,40 @@ class PatientService:
                 .where(UserDBM.role == UserDBM.Roles.doctor)
             )).scalar_one()
         return doctor_dbm
+    
+
+    @staticmethod
+    async def save_connect_to_doctor_current_page(
+        state: FSMContext,
+        page: int
+    ):
+        await MessageService.set_state_data(
+            state=state,
+            key="connect_to_doctor_page",
+            value=page,
+        )
+
+        
+    @staticmethod
+    async def get_connect_to_doctor_current_page(state: FSMContext):
+        data = await state.get_data()
+        return data.get("connect_to_doctor_page", 0)
+    
+
+    @staticmethod
+    async def save_selected_doctor(
+        state: FSMContext,
+        doctor_id: int,
+    ):
+        await MessageService.set_state_data(
+            state=state,
+            key="selected_doctor_id",
+            value=doctor_id,
+        )
+
+    @staticmethod
+    async def get_selected_from_state(state: FSMContext):
+        doctor_id = await MessageService.get_state_data(
+            state=state, key="selected_doctor_id"
+        )
+        return doctor_id
