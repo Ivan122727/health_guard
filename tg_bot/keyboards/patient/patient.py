@@ -91,3 +91,67 @@ class PatientKeyboard(CommonKeyboard):
 
         keyboard.adjust(1)
         return keyboard.as_markup()
+    
+    @staticmethod
+    def get_survey_notification_keyboard(
+        notification_id: int,
+    ) -> InlineKeyboardMarkup:
+        """
+        Клавиатура для уведомления о необходимости пройти опрос
+        
+        Args:
+            notification_id: ID уведомления об опросе
+            can_postpone: Можно ли отложить опрос
+            
+        Returns:
+            InlineKeyboardMarkup: Клавиатура с кнопками действий
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Основная кнопка начала опроса
+        keyboard.button(
+            text="▶️ Начать опрос",
+            callback_data=f"{PatientAction.START_SURVEY.value}:{notification_id}"
+        )
+        
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+    
+    @staticmethod
+    def get_survey_question_keyboard(
+        question_id: int,
+        options: List[str],
+        has_previous: bool = False
+    ) -> InlineKeyboardMarkup:
+        """
+        Клавиатура с вариантами ответов на вопрос опроса
+        
+        Args:
+            question_id: ID текущего вопроса
+            options: Список вариантов ответа
+            has_previous: Есть ли предыдущий вопрос для возврата
+            
+        Returns:
+            InlineKeyboardMarkup: Клавиатура с кнопками ответов
+        """
+        keyboard = InlineKeyboardBuilder()
+        
+        # Кнопки вариантов ответа (каждая в отдельной строке)
+        for i, option in enumerate(options, start=1):
+            keyboard.button(
+                text=f"{i}. {option}",
+                callback_data=f"{PatientAction.ANSWER_QUESTION.value}:{question_id}:{i}"
+            )
+        
+        # Кнопка "Предыдущий вопрос" (если нужно)
+        if has_previous:
+            keyboard.button(
+                text="◀️ Предыдущий вопрос",
+                callback_data=f"{PatientAction.PREV_QUESTION.value}:{question_id}"
+            )
+        
+        # Настраиваем layout: каждый вариант ответа на новой строке, 
+        # кнопка "назад" внизу отдельно
+        keyboard.adjust(*[1]*len(options), 1)
+        
+        return keyboard.as_markup()

@@ -14,6 +14,7 @@ from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import SurveyReminderDBM, ScheduledSurveyDBM, SurveyDBM
 from tg_bot.blanks.patient import PatientBlank
 from tg_bot.handlers.common.message_service import MessageService
+from tg_bot.keyboards.patient.patient import PatientKeyboard
 
 class NotificationSender:
     def __init__(self, settings: BotSettings):
@@ -27,6 +28,7 @@ class NotificationSender:
         scheduled_survey: ScheduledSurveyDBM,
         scheduled_time: time,
         reminder_number: int,
+        notification_id: int,
     ) -> bool:
         """Отправить уведомление пользователю.
         
@@ -37,18 +39,21 @@ class NotificationSender:
         Returns:
             bool: Результат отправки (True - успешно, False - ошибка)
         """
+        adjusted_time = (datetime.combine(datetime.min, scheduled_time) + timedelta(hours=5)).time()
+
         await MessageService.send_managed_message(
             bot=self.bot,
             user_id=scheduled_survey.patient_id,
             text=PatientBlank.get_survey_notification_blank(
                 title=scheduled_survey.survey.title,
                 doctor_name=scheduled_survey.doctor.full_name,
-                scheduled_time=scheduled_time,
+                scheduled_time=adjusted_time,
                 reminder_number=reminder_number,
                 max_reminders=scheduled_survey.max_reminders,
             ),
+            reply_markup=PatientKeyboard.get_survey_notification_keyboard(notification_id=notification_id)
         )
-
+        print(notification_id)
 
 
 class SurveyReminderProcessor:
@@ -208,16 +213,19 @@ class SurveyReminderProcessor:
             status=SurveyReminderDBM.ReminderStatus.SENT,
             creation_dt=datetime.now(tz=pytz.UTC),
         )
+
+        self.session.add(new_reminder)
+        await self.session.flush()
+        await self.session.refresh(new_reminder)
+
         # Отправляем уведомление, если настроен отправитель
         if self.notification_sender:
             await self.notification_sender.send_notification(
                 scheduled_survey=survey, 
                 scheduled_time=scheduled_time,
                 reminder_number=len(reminders) + 1,
+                notification_id=new_reminder.id,
             )
-
-        self.session.add(new_reminder)
-        await self.session.flush()
     
     async def update_survey_schedule(
         self,

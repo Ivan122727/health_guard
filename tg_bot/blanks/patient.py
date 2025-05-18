@@ -67,3 +67,27 @@ class PatientBlank(CommonBlank):
             text += "⏳ <b>Последнее напоминание!</b> Пожалуйста, пройдите опрос как можно скорее."
         
         return text
+
+    @staticmethod
+    def get_survey_question_blank(
+        survey_title: str,
+        question_text: str,
+        question_number: int,
+        total_questions: int
+    ) -> str:
+        """
+        Форматирует текст вопроса в опросе
+        
+        Args:
+            survey_title: Название опроса
+            question_text: Текст вопроса
+            question_number: Номер текущего вопроса
+            total_questions: Общее количество вопросов
+        """
+        text = (
+            f"📝 <b>Опрос:</b> {survey_title}\n"
+            f"🔢 <b>Вопрос {question_number} из {total_questions}</b>\n\n"
+            f"❓ {question_text}\n\n"
+            f"👇 Пожалуйста, выберите один из вариантов ответа:"
+        )
+        return text

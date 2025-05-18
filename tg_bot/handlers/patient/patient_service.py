@@ -1,10 +1,11 @@
-from typing import Any
+from typing import Any, Optional
 import sqlalchemy
 from aiogram.fsm.context import FSMContext
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, DoctorPatientDBM
 from tg_bot.handlers.common.message_service import MessageService
+from tg_bot.handlers.patient.patient_survey_models import PatientSurvey
 
 
 class PatientService:
@@ -119,3 +120,37 @@ class PatientService:
             state=state, key="selected_doctor_id"
         )
         return doctor_id
+    
+
+    @staticmethod
+    async def survey_can_be_passed(
+        state: FSMContext,
+        notification_id: Optional[int] = None
+    ):
+        if notification_id:
+            patient_survey = PatientSurvey()
+            success = await patient_survey.load(notification_id)
+            if success:
+                await MessageService.set_state_data(
+                    state=state,
+                    key="patient_survey",
+                    value=patient_survey
+                )
+                return True
+            return False
+        else:
+            patient_survey = await MessageService.get_state_data(
+                state=state,
+                key="patient_survey"
+            )
+
+            return bool(patient_survey)
+        
+    @staticmethod
+    async def get_survey(
+        state: FSMContext,  
+    ) -> PatientSurvey:
+        return (await MessageService.get_state_data(
+            state=state,
+            key="patient_survey"
+        ))
