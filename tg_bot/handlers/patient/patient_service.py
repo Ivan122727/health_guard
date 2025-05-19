@@ -1,9 +1,10 @@
+from datetime import date
 from typing import Any, Optional
 import sqlalchemy
 from aiogram.fsm.context import FSMContext
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, DoctorPatientDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, DoctorPatientDBM, SurveyReminderDBM, SurveyResponseDBM
 from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.handlers.patient.patient_survey_models import PatientSurvey
 
@@ -125,7 +126,8 @@ class PatientService:
     @staticmethod
     async def survey_can_be_passed(
         state: FSMContext,
-        notification_id: Optional[int] = None
+        message_id: int,
+        notification_id: Optional[int] = None,
     ):
         if notification_id:
             patient_survey = PatientSurvey()
@@ -133,7 +135,7 @@ class PatientService:
             if success:
                 await MessageService.set_state_data(
                     state=state,
-                    key="patient_survey",
+                    key=f"patient_survey:{message_id}",
                     value=patient_survey
                 )
                 return True
@@ -141,16 +143,96 @@ class PatientService:
         else:
             patient_survey = await MessageService.get_state_data(
                 state=state,
-                key="patient_survey"
+                key=f"patient_survey:{message_id}"
             )
 
             return bool(patient_survey)
         
     @staticmethod
     async def get_survey(
-        state: FSMContext,  
+        state: FSMContext, 
+        message_id: int, 
     ) -> PatientSurvey:
         return (await MessageService.get_state_data(
             state=state,
-            key="patient_survey"
+            key=f"patient_survey:{message_id}"
         ))
+    
+    @staticmethod
+    async def save_modificate(
+        state: FSMContext,
+        message_id: int,
+        modificated_survey: PatientSurvey
+    ):
+        await MessageService.set_state_data(
+                state=state,
+                key=f"patient_survey:{message_id}",
+                value=modificated_survey
+        )
+    
+    @staticmethod
+    async def save_test_attemp(
+        state: FSMContext,
+        survey: PatientSurvey,
+        message_id: int
+    ):
+        await MessageService.set_state_data(
+                state=state,
+                key=f"patient_survey:{message_id}",
+                value=None
+        )
+        
+        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            # Получаем текущую попытку прохождения опроса
+            curr_attemp = (await async_session.execute(
+                sqlalchemy
+                .select(SurveyReminderDBM)
+                .where(SurveyReminderDBM.id == survey.notification_id)
+            )).scalars().unique().one()
+            
+            schedule_date = date(curr_attemp.creation_dt.year, curr_attemp.creation_dt.month, curr_attemp.creation_dt.day)
+            
+            # Проверяем, есть ли уже завершенные или проваленные попытки 
+            # для этого опроса и времени в тот же день
+            existing_attempts = await async_session.execute(
+                sqlalchemy
+                .select(SurveyReminderDBM)
+                .where(SurveyReminderDBM.scheduled_survey_id == survey.scheduled_survey_id)
+                .where(SurveyReminderDBM.scheduled_time == survey.scheduled_time)
+                .where(sqlalchemy.func.date(SurveyReminderDBM.creation_dt) == schedule_date)
+                .where(SurveyReminderDBM.status.in_([
+                    SurveyReminderDBM.ReminderStatus.COMPLETED,
+                    SurveyReminderDBM.ReminderStatus.FAILED
+                ]))
+            )
+            
+            # Если такие попытки уже есть - просто выходим, ничего не меняя
+            if existing_attempts.scalars().first() is not None:
+                return
+            
+            # Помечаем текущую попытку как завершенную
+            curr_attemp.status = SurveyReminderDBM.ReminderStatus.COMPLETED
+            
+            
+                # curr_attemp.answers = survey.answers
+            
+            # Помечаем все другие ожидающие попытки для этого опроса 
+            # и времени в тот же день как проваленные
+            pending_attempts = await async_session.execute(
+                sqlalchemy
+                .select(SurveyReminderDBM)
+                .where(SurveyReminderDBM.scheduled_survey_id == survey.scheduled_survey_id)
+                .where(SurveyReminderDBM.scheduled_time == survey.scheduled_time)
+                .where(sqlalchemy.func.date(SurveyReminderDBM.creation_dt) == schedule_date)
+                .where(SurveyReminderDBM.status == SurveyReminderDBM.ReminderStatus.PENDING)
+                .where(SurveyReminderDBM.id != survey.notification_id)
+            )
+            
+            for attempt in pending_attempts.scalars():
+                attempt.status = SurveyReminderDBM.ReminderStatus.FAILED
+            
+            await async_session.commit()
+
+        print(survey.title)
+        print(survey.notification_id)
+        print(survey.answers)

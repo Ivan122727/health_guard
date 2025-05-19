@@ -9,3 +9,4 @@ class PatientAction(str, Enum):
     CANCEL_CONNECT_TO_DOCTOR = "cancel_connect_to_doctor"
     START_SURVEY = "start_survey"
     ANSWER_QUESTION = "answer_question"
+    PREV_QUESTION = "prev_question"

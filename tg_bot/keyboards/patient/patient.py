@@ -140,7 +140,7 @@ class PatientKeyboard(CommonKeyboard):
         for i, option in enumerate(options, start=1):
             keyboard.button(
                 text=f"{i}. {option}",
-                callback_data=f"{PatientAction.ANSWER_QUESTION.value}:{question_id}:{i}"
+                callback_data=f"{PatientAction.ANSWER_QUESTION.value}:{question_id}:{option}"
             )
         
         # Кнопка "Предыдущий вопрос" (если нужно)

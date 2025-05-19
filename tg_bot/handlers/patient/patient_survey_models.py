@@ -39,6 +39,8 @@ class PatientSurvey:
                 self.curr_question_index = 0
                 self.count_question = len(self.questions)
                 self.answers = {}
+                self.scheduled_time = notification_dbm.scheduled_time
+                self.scheduled_survey_id = notification_dbm.scheduled_survey_id
 
                 return True
                 
