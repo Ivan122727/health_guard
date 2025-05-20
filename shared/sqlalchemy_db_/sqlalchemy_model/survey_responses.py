@@ -68,5 +68,5 @@ class SurveyResponseDBM(SimpleDBM):
             f"SurveyResponseDBM(id={self.id}, "
             f"patient_id={self.patient_id}, "
             f"question_id={self.question_id}, "
-            f"answered_at={self.answered_at})"
+            f"answered_at={self.creation_dt})"
         )

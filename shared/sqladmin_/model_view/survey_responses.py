@@ -49,6 +49,7 @@ class SurveyResponseMV(SimpleMV, model=SurveyResponseDBM):
     column_searchable_list = [
         SurveyResponseDBM.id,
         SurveyResponseDBM.answer,
+        SurveyResponseDBM.patient_id,
     ]
     
     column_filters = [

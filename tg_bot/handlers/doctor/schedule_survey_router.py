@@ -1,7 +1,13 @@
+import os
 from typing import Optional
+import uuid
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
+
 
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, ScheduledSurveyDBM, SurveyDBM
 from tg_bot.handlers.common.message_service import MessageService
@@ -1054,3 +1060,78 @@ async def confirm_schedule_survey_cq(
         message=callback_query.message,
         new_state=None
     )
+
+
+
+@router.callback_query(F.data.startswith(DoctorAction.GET_SURVEYS_STATICS.value))
+async def handle_get_survey_statistics(
+    callback_query: CallbackQuery,
+    state: FSMContext,
+    keyboard: type[DoctorKeyboard],
+    blank: type[DoctorBlank],
+    user_dbm: type[UserDBM]
+):
+    await callback_query.answer()
+    wb = Workbook()
+    
+    # Удаляем дефолтный лист
+    if 'Sheet' in wb.sheetnames:
+        del wb['Sheet']
+    
+    # Получаем все опросы
+    surveys = await ScheduleSurveyService.get_all_surveys(user_dbm.tg_id)  # Предполагаем, что такой метод существует
+    
+    for survey in surveys:
+        # Создаем лист для каждого опроса
+        ws = wb.create_sheet(title=f"{survey.title[:25]}_{survey.id}")
+        
+        # Настройки форматирования
+        ws.row_dimensions[1].height = 25
+        alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+        
+        # Получаем вопросы для этого опроса
+        question_dbms = await ScheduleSurveyService.get_questions_by_survey(
+            survey_id=survey.id
+        )
+        
+        # Формируем заголовки
+        headers = [
+            "Пользователь",
+            "Запланированная дата",
+            "Запланированное время",
+        ]
+
+        for question_dbm in question_dbms:
+            headers.append(f"Вопрос с ID: {question_dbm.id}")
+        
+        ws.append(headers)
+    
+        # Форматирование заголовков
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = alignment
+
+        response_for_all_time = await ScheduleSurveyService.get_survey_responses_for_all_time(survey.id)
+
+        for row in response_for_all_time:
+            print(row[0])
+            print(row[1])
+            print(row[2])
+            print(row[3]) # здесь
+            print()
+    # Сохраняем и отправляем файл
+    file_path = f'./survey_stats_{uuid.uuid4()}.xlsx'
+    wb.save(file_path)
+    
+    try:
+        stat_file = FSInputFile(file_path)
+        await callback_query.message.answer_document(
+            document=stat_file,
+            caption=f"Статистика по {len(surveys)} опросам"
+        )
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)

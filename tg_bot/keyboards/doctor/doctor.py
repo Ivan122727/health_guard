@@ -29,7 +29,12 @@ class DoctorKeyboard(CommonKeyboard):
             text="📋 Получить список вопросов", 
             callback_data=DoctorAction.GET_LIST_QUESTIONS
         )
-
+        
+        keyboard.button(
+            text="📋 Получить статистику опросов", 
+            callback_data=DoctorAction.GET_SURVEYS_STATICS.value
+        )
+        
         keyboard.adjust(1)
         return keyboard.as_markup()
     

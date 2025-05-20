@@ -1,12 +1,13 @@
-from typing import Optional
+from typing import Any, Optional
 import sqlalchemy
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 from datetime import date, time
 from typing import Tuple
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, ScheduledSurveyDBM, SurveyReminderDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, ScheduledSurveyDBM, SurveyQuestionDBM, QuestionDBM, SurveyResponseDBM
 from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.handlers.doctor.survey_models import Question, ScheduledSurvey
 from tg_bot.utils.time_validator import TimeValidator
@@ -362,3 +363,125 @@ class ScheduleSurveyService:
         await ScheduleSurveyService.clear_schedule_data(
             state=state,
         )
+
+    
+    @staticmethod
+    async def get_all_surveys(
+        user_tg_id: int
+    ) -> list[SurveyDBM]:
+        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            surveys_dbms = (await async_session.execute(
+                sqlalchemy
+                .select(SurveyDBM)
+                .where(SurveyDBM.created_by == user_tg_id)
+                .where(SurveyDBM.is_active)
+            )).scalars().unique().all()
+            
+            return surveys_dbms
+
+
+    @staticmethod
+    async def get_questions_by_survey(
+        survey_id: int
+    ) -> list[QuestionDBM]:
+        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            survey_question_dbms = (await async_session.execute(
+                sqlalchemy
+                .select(SurveyQuestionDBM)
+                .where(SurveyQuestionDBM.survey_id == survey_id)
+                .options(
+                    joinedload(SurveyQuestionDBM.question)
+                )
+            )).scalars().unique().all()
+            
+            return [survey_question_dbm.question for survey_question_dbm in survey_question_dbms]
+        
+
+    @staticmethod
+    async def _get_statistic_by_params(
+        survey_id: int,
+        scheduled_date: date,
+        scdeduled_time: time,
+        user_id: int,
+        async_session: AsyncSession
+    ) -> list[str]:
+        responses = (await async_session.execute(
+            sqlalchemy
+            .select(SurveyResponseDBM)
+            .options(
+                joinedload(SurveyResponseDBM.scheduled_survey)
+            )
+            .where(sqlalchemy.func.date(SurveyResponseDBM.creation_dt) == scheduled_date)
+            .where(ScheduledSurveyDBM.survey_id == survey_id)
+            .where(SurveyResponseDBM.scheduled_time == scdeduled_time)
+            .where(SurveyResponseDBM.patient_id == user_id)
+        )).scalars().unique().all()
+
+
+        return [response.answer for response in responses]
+    
+    @staticmethod
+    async def get_survey_responses_for_all_time(
+        survey_id: int
+    ):
+        async with get_cached_sqlalchemy_db().new_async_session() as async_session:
+            # Получаем все уникальные даты, когда были ответы для данного survey_id
+            dates_result = await async_session.execute(
+                sqlalchemy.select(
+                    sqlalchemy.func.date(SurveyResponseDBM.creation_dt).label('response_date')
+                )
+                .join(ScheduledSurveyDBM, SurveyResponseDBM.scheduled_survey_id == ScheduledSurveyDBM.id)
+                .where(ScheduledSurveyDBM.survey_id == survey_id)
+                .where(SurveyResponseDBM.creation_dt.is_not(None))
+                .distinct()
+            )
+            
+            dates = [row.response_date for row in dates_result]
+            
+            responses_for_all_time = []
+
+            for curr_date in dates:
+                # Получаем все ответы для текущей даты и survey_id
+                responses_result = await async_session.execute(
+                    sqlalchemy.select(SurveyResponseDBM)
+                    .join(ScheduledSurveyDBM, SurveyResponseDBM.scheduled_survey_id == ScheduledSurveyDBM.id)
+                    .options(
+                        joinedload(SurveyResponseDBM.scheduled_survey),
+                        joinedload(SurveyResponseDBM.patient)  # Добавляем загрузку пользователя
+                    )
+                    .where(sqlalchemy.func.date(SurveyResponseDBM.creation_dt) == curr_date)
+                    .where(ScheduledSurveyDBM.survey_id == survey_id)
+                )
+
+                responses = responses_result.scalars().unique().all()
+                
+                # Получаем уникальные запланированные времена для текущего дня
+                scheduled_times = list({
+                    response.scheduled_time for response in responses 
+                    if response.scheduled_time is not None
+                })
+                
+                # Словарь для хранения данных по текущей дате
+                date_data = {}
+                
+                for scheduled_time in scheduled_times:
+                    # Получаем уникальных пользователей для данного времени
+                    users = list({
+                        response.patient_id for response in responses
+                        if response.scheduled_time == scheduled_time
+                    })
+                    
+                    time_data = {}
+                    
+                    for user_id in users:
+                        user_reponces = await ScheduleSurveyService._get_statistic_by_params(
+                            survey_id=survey_id,
+                            scheduled_date=curr_date,
+                            scdeduled_time=scheduled_time,
+                            user_id=user_id,
+                            async_session=async_session,
+                        )
+                        responses_for_all_time.append((user_id, curr_date, scheduled_time, user_reponces))
+                    date_data[scheduled_time] = time_data
+                
+            return responses_for_all_time

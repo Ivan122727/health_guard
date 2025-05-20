@@ -6,7 +6,8 @@ class DoctorAction(str, Enum):
     CREATE_TITLE_SURVEY = "create_title_survey"
     SCHEDULE_SURVEY = "schedule_survey"
     GET_LIST_QUESTIONS = "list_questions"
-    
+    GET_SURVEYS_STATICS = "get_surveys_statics"
+
     # Создание опроса
     EDIT_SURVEY_TITLE = "edit_survey_title"
     CONFIRM_TITLE_SURVEY = "confirm_title_survey"
