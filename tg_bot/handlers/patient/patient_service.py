@@ -174,7 +174,8 @@ class PatientService:
     async def save_test_attemp(
         state: FSMContext,
         survey: PatientSurvey,
-        message_id: int
+        message_id: int,
+        patient_id: int
     ):
         await MessageService.set_state_data(
                 state=state,
@@ -205,17 +206,27 @@ class PatientService:
                     SurveyReminderDBM.ReminderStatus.FAILED
                 ]))
             )
-            
+
             # Если такие попытки уже есть - просто выходим, ничего не меняя
             if existing_attempts.scalars().first() is not None:
-                return
+                return False
             
+            for number_question, answer in survey.answers.items():
+                curr_question = survey.questions[number_question]
+                survey_response = SurveyResponseDBM(
+                    scheduled_survey_id=curr_attemp.scheduled_survey_id,
+                    patient_id=patient_id,
+                    question_id=curr_question.question_id,
+                    answer=answer,
+                    scheduled_time=curr_attemp.scheduled_time,
+                )
+                async_session.add(survey_response)
+                await async_session.flush()
+
             # Помечаем текущую попытку как завершенную
             curr_attemp.status = SurveyReminderDBM.ReminderStatus.COMPLETED
             
-            
-                # curr_attemp.answers = survey.answers
-            
+                
             # Помечаем все другие ожидающие попытки для этого опроса 
             # и времени в тот же день как проваленные
             pending_attempts = await async_session.execute(
@@ -224,7 +235,6 @@ class PatientService:
                 .where(SurveyReminderDBM.scheduled_survey_id == survey.scheduled_survey_id)
                 .where(SurveyReminderDBM.scheduled_time == survey.scheduled_time)
                 .where(sqlalchemy.func.date(SurveyReminderDBM.creation_dt) == schedule_date)
-                .where(SurveyReminderDBM.status == SurveyReminderDBM.ReminderStatus.PENDING)
                 .where(SurveyReminderDBM.id != survey.notification_id)
             )
             
@@ -232,7 +242,5 @@ class PatientService:
                 attempt.status = SurveyReminderDBM.ReminderStatus.FAILED
             
             await async_session.commit()
-
-        print(survey.title)
-        print(survey.notification_id)
-        print(survey.answers)
+            
+            return True

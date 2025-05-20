@@ -137,10 +137,10 @@ class PatientKeyboard(CommonKeyboard):
         keyboard = InlineKeyboardBuilder()
         
         # Кнопки вариантов ответа (каждая в отдельной строке)
-        for i, option in enumerate(options, start=1):
+        for i, option in enumerate(options, start=0):
             keyboard.button(
-                text=f"{i}. {option}",
-                callback_data=f"{PatientAction.ANSWER_QUESTION.value}:{question_id}:{option}"
+                text=f"{i + 1}. {option}",
+                callback_data=f"{PatientAction.ANSWER_QUESTION.value}:{question_id}:{i}"
             )
         
         # Кнопка "Предыдущий вопрос" (если нужно)

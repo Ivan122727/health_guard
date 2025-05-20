@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional, Union, Dict, List
 import sqlalchemy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -40,6 +40,12 @@ class SurveyResponseDBM(SimpleDBM):
         comment="Ответ пользователя"
     )
     
+    scheduled_time: Mapped[time] = mapped_column(
+        sqlalchemy.TIME,
+        nullable=False,
+        comment="Запланированное время прохождения"
+    )
+
     # Связи
     scheduled_survey: Mapped[Optional["ScheduledSurveyDBM"]] = relationship(
         "ScheduledSurveyDBM",

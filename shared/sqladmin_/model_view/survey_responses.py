@@ -16,6 +16,7 @@ class SurveyResponseMV(SimpleMV, model=SurveyResponseDBM):
         SurveyResponseDBM.patient,
         SurveyResponseDBM.question,
         SurveyResponseDBM.answer,
+        SurveyResponseDBM.scheduled_time,
         SurveyResponseDBM.scheduled_survey,
         SurveyResponseDBM.creation_dt,
     ]
@@ -24,6 +25,7 @@ class SurveyResponseMV(SimpleMV, model=SurveyResponseDBM):
         SurveyResponseDBM.patient,
         SurveyResponseDBM.question,
         SurveyResponseDBM.answer,
+        SurveyResponseDBM.scheduled_time,
         SurveyResponseDBM.scheduled_survey,
     ]
     
@@ -32,6 +34,7 @@ class SurveyResponseMV(SimpleMV, model=SurveyResponseDBM):
         SurveyResponseDBM.patient,
         SurveyResponseDBM.question,
         SurveyResponseDBM.answer,
+        SurveyResponseDBM.scheduled_time,
         SurveyResponseDBM.scheduled_survey,
         SurveyResponseDBM.creation_dt,
     ]

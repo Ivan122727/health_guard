@@ -96,20 +96,22 @@ async def handle_answer_question(
     blank: type[PatientBlank],
     user_dbm: type[UserDBM]
 ):
-    answer_option = await MessageService.get_value_from_callback_data(
+    answer_option_number = await MessageService.get_value_from_callback_data(
         callback_data=callback_query.data,
         position_index=3,
-        type=str,
     )
 
-    print(f"{answer_option=}")
-    
     patient_survey = await PatientService.get_survey(
         state=state,
         message_id=callback_query.message.message_id,
     )
+    
+    curr_question = patient_survey.get_current_question()
 
-    patient_survey.set_answer(answer_option)
+    answer_option_text = (curr_question.question.answer_options)[answer_option_number]
+    
+    
+    patient_survey.set_answer(answer_option_text)
 
     PatientService.save_modificate(
         state=state, 
@@ -121,13 +123,16 @@ async def handle_answer_question(
     if len(patient_survey.answers) == patient_survey.count_question:
         await callback_query.message.delete()
         
-        await callback_query.answer("Тест был пройден!")
-        await PatientService.save_test_attemp(
+        success = await PatientService.save_test_attemp(
             state=state,
             survey=patient_survey,
             message_id=callback_query.message.message_id,
+            patient_id=user_dbm.tg_id,
         )
-
+        if success:
+            await callback_query.answer("Тест был пройден!")
+        else:
+            await callback_query.answer("Тест недоступен!")
     else:
         await proccess_current_question(
             message=callback_query.message,
