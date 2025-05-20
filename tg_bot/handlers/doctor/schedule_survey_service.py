@@ -3,7 +3,7 @@ import sqlalchemy
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
 from typing import Tuple
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
@@ -486,7 +486,10 @@ class ScheduleSurveyService:
                             user_id=user_id,
                             async_session=async_session,
                         )
-                        responses_for_all_time.append((user_id, curr_date, scheduled_time, user_reponces))
+
+                        adjusted_time = (datetime.combine(curr_date, scheduled_time) + timedelta(hours=5)).time()
+
+                        responses_for_all_time.append((user_id, curr_date, adjusted_time, user_reponces))
                     date_data[scheduled_time] = time_data
                 
             return responses_for_all_time

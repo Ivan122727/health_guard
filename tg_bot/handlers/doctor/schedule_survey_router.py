@@ -5,9 +5,8 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
-
 
 from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, ScheduledSurveyDBM, SurveyDBM
 from tg_bot.handlers.common.message_service import MessageService
@@ -1090,6 +1089,10 @@ async def handle_get_survey_statistics(
         alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+        border = Border(left=Side(style='thin'), 
+                      right=Side(style='thin'), 
+                      top=Side(style='thin'), 
+                      bottom=Side(style='thin'))
         
         # Получаем вопросы для этого опроса
         question_dbms = await ScheduleSurveyService.get_questions_by_survey(
@@ -1103,7 +1106,7 @@ async def handle_get_survey_statistics(
             "Запланированное время",
         ]
 
-        # Добавляем вопросы в порядке их ID (можно отсортировать по question_dbm.id)
+        # Добавляем вопросы в порядке их ID
         question_dbms_sorted = sorted(question_dbms, key=lambda x: x.id)
         for question_dbm in question_dbms_sorted:
             headers.append(f"Вопрос с ID: {question_dbm.id}")
@@ -1111,27 +1114,42 @@ async def handle_get_survey_statistics(
         ws.append(headers)
     
         # Форматирование заголовков
-        for cell in ws[1]:
+        for col_idx, cell in enumerate(ws[1], start=1):
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = alignment
+            cell.border = border
+            
+            # Автоматическое выравнивание ширины столбцов
+            column_letter = get_column_letter(col_idx)
+            ws.column_dimensions[column_letter].width = max(
+                len(str(cell.value)) + 2,  # +2 для отступов
+                10  # Минимальная ширина
+            )
 
         response_for_all_time = await ScheduleSurveyService.get_survey_responses_for_all_time(survey.id)
 
-        # Создаем маппинг question_id -> index в headers
-        question_mapping = {f"Вопрос с ID: {q.id}": i for i, q in enumerate(question_dbms_sorted, start=3)}
-
-        for row in response_for_all_time:
+        for row_idx, row in enumerate(response_for_all_time, start=2):
             user_id, curr_date, scheduled_time, answers = row
             
             # Создаем строку для Excel
             excel_row = [user_id, curr_date, scheduled_time]
-            
-            # Добавляем ответы на вопросы в строку
             excel_row.extend(answers)
             
             # Добавляем строку в лист
             ws.append(excel_row)
+            
+            # Форматирование ячеек данных
+            for col_idx, cell in enumerate(ws[row_idx], start=1):
+                cell.alignment = alignment
+                cell.border = border
+                
+                # Обновляем ширину столбца, если значение шире текущего
+                column_letter = get_column_letter(col_idx)
+                current_width = ws.column_dimensions[column_letter].width
+                value_length = len(str(cell.value)) + 2  # +2 для отступов
+                if value_length > current_width:
+                    ws.column_dimensions[column_letter].width = min(value_length, 50)  # Макс 50 символов
     
     # Сохраняем и отправляем файл
     file_path = f'./survey_stats_{uuid.uuid4()}.xlsx'
