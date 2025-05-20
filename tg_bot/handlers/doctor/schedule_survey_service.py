@@ -416,9 +416,14 @@ class ScheduleSurveyService:
             .where(SurveyResponseDBM.scheduled_time == scdeduled_time)
             .where(SurveyResponseDBM.patient_id == user_id)
         )).scalars().unique().all()
+        
 
+        response_answers = [
+            response.answer for response in responses
+            if response.scheduled_survey.survey_id == survey_id
+        ]
 
-        return [response.answer for response in responses]
+        return response_answers
     
     @staticmethod
     async def get_survey_responses_for_all_time(

@@ -1079,7 +1079,7 @@ async def handle_get_survey_statistics(
         del wb['Sheet']
     
     # Получаем все опросы
-    surveys = await ScheduleSurveyService.get_all_surveys(user_dbm.tg_id)  # Предполагаем, что такой метод существует
+    surveys = await ScheduleSurveyService.get_all_surveys(user_dbm.tg_id)
     
     for survey in surveys:
         # Создаем лист для каждого опроса
@@ -1103,7 +1103,9 @@ async def handle_get_survey_statistics(
             "Запланированное время",
         ]
 
-        for question_dbm in question_dbms:
+        # Добавляем вопросы в порядке их ID (можно отсортировать по question_dbm.id)
+        question_dbms_sorted = sorted(question_dbms, key=lambda x: x.id)
+        for question_dbm in question_dbms_sorted:
             headers.append(f"Вопрос с ID: {question_dbm.id}")
         
         ws.append(headers)
@@ -1116,12 +1118,21 @@ async def handle_get_survey_statistics(
 
         response_for_all_time = await ScheduleSurveyService.get_survey_responses_for_all_time(survey.id)
 
+        # Создаем маппинг question_id -> index в headers
+        question_mapping = {f"Вопрос с ID: {q.id}": i for i, q in enumerate(question_dbms_sorted, start=3)}
+
         for row in response_for_all_time:
-            print(row[0])
-            print(row[1])
-            print(row[2])
-            print(row[3]) # здесь
-            print()
+            user_id, curr_date, scheduled_time, answers = row
+            
+            # Создаем строку для Excel
+            excel_row = [user_id, curr_date, scheduled_time]
+            
+            # Добавляем ответы на вопросы в строку
+            excel_row.extend(answers)
+            
+            # Добавляем строку в лист
+            ws.append(excel_row)
+    
     # Сохраняем и отправляем файл
     file_path = f'./survey_stats_{uuid.uuid4()}.xlsx'
     wb.save(file_path)
