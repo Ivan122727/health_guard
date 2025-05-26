@@ -4,9 +4,8 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
-
 
 from shared.sqlalchemy_db_.sqlalchemy_model.user import UserDBM
 from tg_bot.handlers.common.message_service import MessageService
@@ -754,67 +753,93 @@ async def handle_get_list_questions(
     await callback_query.answer()
     wb = Workbook()
     ws = wb.active
+    ws.title = "Список вопросов"
     
-    # Настройки по умолчанию
-    ws.row_dimensions[1].height = 20  # Высота заголовков
-    alignment = Alignment(wrap_text=True, vertical='top')
+    # Стили форматирования
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=12)
+    border = Border(left=Side(style='thin'), 
+                  right=Side(style='thin'), 
+                  top=Side(style='thin'), 
+                  bottom=Side(style='thin'))
+    alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
     
     # Заголовки
     headers = ["ID вопроса", "Текст вопроса", "Варианты ответов", "Создатель", "Публичный"]
     ws.append(headers)
     
-    # Жирный шрифт для заголовков
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
+    # Форматирование заголовков
+    for row in ws.iter_rows(min_row=1, max_row=1):
+        for cell in row:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
     
     # Получаем данные
     question_dbms = await CreateSurveyService.get_available_questions(user_dbm.tg_id)
 
-    for row, question_dbm in enumerate(question_dbms, start=2):
-        answer_options = "; ".join(question_dbm.answer_options) if question_dbm.answer_options else ""
-        ws.append([
+    # Заполняем данными
+    for question_dbm in question_dbms:
+        answer_options = "\n".join(question_dbm.answer_options) if question_dbm.answer_options else ""
+        row = [
             question_dbm.id, 
             question_dbm.question_text, 
             answer_options, 
             question_dbm.created_by, 
-            "Да" if question_dbm.is_public else "Нет"
-        ])
+            "✓" if question_dbm.is_public else "✗"
+        ]
+        ws.append(row)
         
-        # Настраиваем перенос текста и выравнивание
+        # Форматирование строки данных
+        current_row = ws.max_row
         for col in range(1, 6):
-            cell = ws.cell(row=row, column=col)
+            cell = ws.cell(row=current_row, column=col)
             cell.alignment = alignment
+            cell.border = border
             
-            # Автоматическая высота строки для многострочного текста
-            if col in [2, 3]:  # Для столбцов с текстом вопроса и вариантами
-                lines = str(cell.value).count('\n') + 1
-                ws.row_dimensions[row].height = 15 * lines  # ~15 пунктов на строку
+            # Центрируем ID и статус публичности
+            if col in [1, 5]:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
     
-    # Автоматическая ширина столбцов
-    for col in ws.columns:
-        max_length = 0
-        column_letter = get_column_letter(col[0].column)
-        
-        for cell in col:
-            try:
-                # Учитываем переносы строк
-                lines = str(cell.value).split('\n')
-                line_length = max(len(line) for line in lines) if lines else 0
-                if line_length > max_length:
-                    max_length = line_length
-            except:
-                pass
-        
-        adjusted_width = (max_length + 2) * 1.2
-        ws.column_dimensions[column_letter].width = adjusted_width
+    # Автоматическая ширина столбцов с ограничением
+    col_widths = {
+        'A': 10,  # ID вопроса
+        'B': 40,  # Текст вопроса
+        'C': 30,  # Варианты ответов
+        'D': 15,  # Создатель
+        'E': 10   # Публичный
+    }
+    
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
+    
+    # Автоматическая высота строк
+    for row in ws.iter_rows(min_row=2):
+        max_lines = 1
+        for cell in row:
+            if cell.value and isinstance(cell.value, str):
+                lines = cell.value.count('\n') + 1
+                if lines > max_lines:
+                    max_lines = lines
+        ws.row_dimensions[row[0].row].height = 20 * max_lines
+    
+    # Замораживаем заголовки
+    ws.freeze_panes = 'A2'
+    
+    # Добавляем фильтры
+    ws.auto_filter.ref = f"A1:E{ws.max_row}"
     
     # Сохраняем и отправляем файл
-    file_path = f'./{uuid.uuid4()}.xlsx'
+    file_path = f'./questions_list_{uuid.uuid4()}.xlsx'
     wb.save(file_path)
     
     try:
         stat_file = FSInputFile(file_path)
-        await callback_query.message.answer_document(stat_file)
+        await callback_query.message.answer_document(
+            document=stat_file,
+            caption="Список всех доступных вопросов"
+        )
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
