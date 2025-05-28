@@ -228,8 +228,8 @@ class SurveyReminderProcessor:
             )
     
     async def update_survey_schedule(
-        self,
-        survey: ScheduledSurveyDBM
+    self,
+    survey: ScheduledSurveyDBM
     ) -> None:
         """Обновить расписание опроса.
         
@@ -245,6 +245,12 @@ class SurveyReminderProcessor:
         
         if not all(checks):
             return  # Не все напоминания отправлены
+        
+        # Проверяем, что next_scheduled_date не None
+        if survey.next_scheduled_date is None:
+            survey.is_active = False
+            await self.session.flush()
+            return
         
         # Вычисляем следующую дату в зависимости от типа периодичности
         if survey.frequency_type == ScheduledSurveyDBM.FrequencyType.EVERY_FEW_DAYS:
