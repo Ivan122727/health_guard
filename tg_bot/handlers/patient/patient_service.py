@@ -203,7 +203,7 @@ class PatientService:
                 .where(sqlalchemy.func.date(SurveyReminderDBM.creation_dt) == schedule_date)
                 .where(SurveyReminderDBM.status.in_([
                     SurveyReminderDBM.ReminderStatus.COMPLETED,
-                    SurveyReminderDBM.ReminderStatus.FAILED
+                    # SurveyReminderDBM.ReminderStatus.FAILED
                 ]))
             )
 

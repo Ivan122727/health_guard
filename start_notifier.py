@@ -174,9 +174,9 @@ class SurveyReminderProcessor:
         
         # Пропускаем если достигнут максимум напоминаний
         if len(reminders) >= survey.max_reminders:
-            for reminder in reminders:
-                reminder.status = SurveyReminderDBM.ReminderStatus.FAILED
-                await self.session.flush()
+            # for reminder in reminders:
+            #     reminder.status = SurveyReminderDBM.ReminderStatus.FAILED
+            #     await self.session.flush()
             return True
         
         return False
