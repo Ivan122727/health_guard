@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Tuple
 
 from shared.sqlalchemy_db_.sqlalchemy_db import get_cached_sqlalchemy_db
-from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, ScheduledSurveyDBM, SurveyQuestionDBM, QuestionDBM, SurveyResponseDBM
+from shared.sqlalchemy_db_.sqlalchemy_model import UserDBM, SurveyDBM, ScheduledSurveyDBM, SurveyQuestionDBM, QuestionDBM, SurveyResponseDBM, DoctorPatientDBM
 from tg_bot.handlers.common.message_service import MessageService
 from tg_bot.handlers.doctor.survey_models import Question, ScheduledSurvey
 from tg_bot.utils.time_validator import TimeValidator
@@ -247,11 +247,11 @@ class ScheduleSurveyService:
                 sqlalchemy
                 .select(UserDBM)
                 .where(UserDBM.role == UserDBM.Roles.patient)
-                # .join(DoctorPatientDBM, sqlalchemy.and_(
-                #     DoctorPatientDBM.doctor_id == user_id,
-                #     DoctorPatientDBM.patient_id == UserDBM.tg_id
-                #     )
-                # )
+                .join(DoctorPatientDBM, sqlalchemy.and_(
+                    DoctorPatientDBM.doctor_id == user_id,
+                    DoctorPatientDBM.patient_id == UserDBM.tg_id
+                    )
+                )
                 .order_by(UserDBM.id)
             )).scalars().unique().all()
         
